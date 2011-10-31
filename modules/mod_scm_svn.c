@@ -1,6 +1,6 @@
 #define MODULE_IDENTIFICATION	"SCM SVN module"
 #define MODULE_KEYWORD          "SCM-SVN"
-#define MODULE_PORT		3690
+#define MODULE_PORT		PORT_TCP(3690)
 #define DEBUG_MOD_GIT
 
 #include "../manager.h"

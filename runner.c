@@ -11,7 +11,22 @@ do { printf("runner: " fmt , ##args); } while (0)
 
 void exitFunc(void)
 {
+	if ((parentPid != getpid()) || (getuid() != 0))
+		return;
+
+	firewall_srvmgr_enable( 0 );
+	firewall_srvmgr_chain_delete();
+	firewall_chain_delete();
+
+	firewall_save( 1 );
+
 	modules_free();
+}
+
+void exitFunc2(int sig)
+{
+	exitFunc();
+	exit(0);
 }
 
 void firewall_init(void)
@@ -22,8 +37,10 @@ void firewall_init(void)
 	firewall_ensure_chain_exist();
 
 	for (i = 0; i < numModules; i++) {
-		if (modules[i].port > 0)
-			firewall_rule_insert(modules[i].port, IPT_PROTO_TCP, IPT_TYPE_ACCEPT);
+		if (GET_PORT_TCP(modules[i].port) > 0)
+			firewall_rule_insert(GET_PORT_TCP(modules[i].port), IPT_PROTO_TCP, IPT_TYPE_ACCEPT);
+		if (GET_PORT_UDP(modules[i].port) > 0)
+			firewall_rule_insert(GET_PORT_UDP(modules[i].port), IPT_PROTO_UDP, IPT_TYPE_ACCEPT);
 	}
 
 	//firewall_rule_insert(port, IPT_PROTO_TCP | IPT_PROTO_UDP, IPT_TYPE_ACCEPT);
@@ -42,6 +59,11 @@ int main(int argc, char *argv[])
 
 	atexit(exitFunc);
 	modules_init();
+
+	signal(SIGINT, &exitFunc2);
+
+	parentPid = getpid();
+	DPRINTF("Parent PID is %d\n", parentPid);
 
 	if (argc == 1) {
 		snprintf(modPath, sizeof(modPath), "%s/modules", dirname(argv[0]));

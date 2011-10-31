@@ -1,0 +1,78 @@
+GIT REPOSITORY COMMANDS (SCM-GIT):
+
+1) CREATE REPO
+
+Syntax: SCM-GIT CREATE REPO $name [WITH DESCRIPTION $descr] [FOR $domain]
+
+Purpose: Creates the git repository $name in the repo_dir with optional
+         description $descr for domain (server) $domain.
+
+Example: SCM-GIT CREATE REPO test WITH DESCRIPTION descr FOR domain.tld
+
+         This will create git repository test.git in the repo_dir with
+         description of 'descr' for domain domain.tld.
+
+2) DELETE REPO
+
+Syntax: SCM-GIT DELETE REPO $name
+
+Purpose: Deletes the repository $name from repo_dir.
+
+Example: SCM-GIT DELETE REPO test
+
+         This command deletes the repository test.git from the repo_dir.
+
+3) ALTER REPO
+
+Syntax: SCM-GIT ALTER REPO test SET type new_value
+
+where type can be either DESCRIPTION or SERVER. New value can be empty
+to disable server limitations or delete the repository description.
+
+Purpose: Allows to change the repo description or server.
+
+Example: SCM-GIT ALTER REPO test SET SERVER
+         SCM-GIT ALTER REPO test SET SERVER domain
+
+         First command changes the repository test.git rules to be shown
+         in gitweb of all the servers and second command limits the
+         repository to be shown only for domain (server) 'domain'.
+
+4) DAEMON ENABLE
+
+Syntax: DAEMON ENABLE
+
+Purpose: Ensures the init scripts exists and enables the Git daemon.
+
+5) DAEMON DISABLE
+
+Syntax: DAEMON DISABLE
+
+Purpose: Disables the Git daemon.
+
+
+SVN REPOSITORY COMMANDS (SCM-SVN):
+
+1) CREATE REPO
+
+Syntax: SCM-SVN CREATE REPO $name [ALLOW-ALL]
+
+Purpose: Creates a new subversion (SVN) repository $name with option to
+         allow full access to all or not (ALLOW-ALL option).
+
+Example: SCM-SVN CREATE REPO test ALLOW-ALL
+
+         This command creates the SVN repository with read-write, i.e. full,
+         access rights to all users.
+
+2) DELETE REPO
+
+Syntax: SCM-SVN DELETE REPO $name
+
+Purpose: Deletes the subversion repository from the repo_dir.
+
+Example: SCM-SVN DELETE REPO test
+
+         This command deletes the repo named 'test' from the repo_dir.
+
+

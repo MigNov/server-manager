@@ -20,12 +20,20 @@ int firewall_ensure_chain_exist(void)
 	return WEXITSTATUS(system(cmd));
 }
 
+int firewall_chain_delete(void)
+{
+	char cmd[BUFSIZE];
+
+	snprintf(cmd, sizeof(cmd), "%s -X %s 2> /dev/null > /dev/null", IPTABLES_BINARY, IPT_CHAIN_NAME);
+	return WEXITSTATUS(system(cmd));
+}
+
 int firewall_srvmgr_enable(int enable)
 {
 	int ret;
 	char cmd[BUFSIZE];
 
-	snprintf(cmd, sizeof(cmd), "%s -%c INPUT --jump %s", IPTABLES_BINARY, (enable) ? 'I' : 'D',
+	snprintf(cmd, sizeof(cmd), "%s -%c INPUT --jump %s 2> /dev/null >/dev/null", IPTABLES_BINARY, (enable) ? 'I' : 'D',
 		IPT_CHAIN_NAME);
 
 	DPRINTF("%s: Running '%s'\n", __FUNCTION__, cmd);
@@ -61,11 +69,11 @@ int firewall_srvmgr_chain_enabled(void)
 	return ret;
 }
 
-int firewall_srvmgr_chain_delete(char *name)
+int firewall_srvmgr_chain_delete(void)
 {
 	FILE *fp, *fp2;
 	char s[2048] = { 0 };
-	char tmp[] = "/tmp/iptables.XXXXXX";
+	char tmp[] = "/tmp/srvmgr-iptables.XXXXXX";
 
 	mkstemp(tmp);
 

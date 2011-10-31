@@ -1,6 +1,6 @@
 #define MODULE_IDENTIFICATION	"SCM Git module"
 #define MODULE_KEYWORD		"SCM-GIT"
-#define MODULE_PORT		9418
+#define MODULE_PORT		PORT_TCP(9418)
 #define MODULE_INIT_SCRIPT	"/etc/init.d/git-daemon"
 #define MODULE_SYSCONFIG	"/etc/sysconfig/git-daemon"
 #define MODULE_SERVICE		"service git-daemon"

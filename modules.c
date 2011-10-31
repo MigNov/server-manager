@@ -157,7 +157,11 @@ void module_dump(void)
 		DPRINTF("\tFilename: %s\n", modules[i].name);
 		DPRINTF("\tIdentification: %s\n", modules[i].ident);
 		DPRINTF("\tKeyword: %s\n", modules[i].keyword);
-		DPRINTF("\tPort: %d\n", modules[i].port);
+
+		if (GET_PORT_TCP(modules[i].port))
+			DPRINTF("\tTCP Port: %d\n", GET_PORT_TCP(modules[i].port));
+		if (GET_PORT_UDP(modules[i].port))
+			DPRINTF("\tUDP Port: %d\n", GET_PORT_UDP(modules[i].port));
 	}
 	DPRINTF("-----\n");
 }

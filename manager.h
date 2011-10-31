@@ -31,6 +31,7 @@ typedef struct tModule {
 
 tModule *modules;
 int numModules;
+int parentPid;
 
 char* config_read(const char *filename, char *key);
 
@@ -46,5 +47,13 @@ char* config_read(const char *filename, char *key);
 #define IPT_TYPE_REJECT	2
 
 #define IPT_CHAIN_NAME	"SRVMGR"
+
+#define PORT_NONE	0
+#define PORT_TCP(x)	(x << 16)
+#define PORT_UDP(x)	(x)
+#define PORT_BOTH(x)	( PORT_TCP(x) | PORT_UDP(x) )
+
+#define GET_PORT_TCP(x)	(int)((x >> 16) & 0xFFFF)
+#define GET_PORT_UDP(x)	(int)(x & 0xFFFF)
 
 #endif
