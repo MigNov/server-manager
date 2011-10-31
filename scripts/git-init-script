@@ -1,0 +1,104 @@
+#!/bin/sh
+#
+# git-daemon	This shell script takes care of starting and stopping
+#		the git daemon
+#
+# chkconfig: - 80 30
+# processname: git-daemon
+# config: /etc/sysconfig/git-daemon.conf
+# pidfile: /var/pid/git-daemon.pid
+
+### BEGIN INIT INFO
+# Provides: git-daemon
+# Required-Start: $local_fs $network $named $remote_fs
+# Required-Stop: $local_fs $network $named $remote_fs
+# Short-Description: Git daemon server
+### END INIT INFO
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+# Source networking configuration.
+. /etc/sysconfig/network
+
+PATH=/sbin:/usr/sbin:/bin:/usr/bin:/usr/lib/git-core
+NAME="git-daemon"
+
+# Check that networking is up.
+[ ${NETWORKING} = "no" ] && exit 1
+
+RETVAL=0
+
+# Fallback options values, we use these when
+# the /etc/default/git-daemon file does not exist
+RUN=yes
+USER=gitosis
+GROUP=gitosis
+REPOSITORIES="/data/repos/git"
+
+# Read configuration variable file if it is present
+[ -r /etc/sysconfig/$NAME ] && . /etc/sysconfig/$NAME
+
+prog="git daemon"
+
+# If ADVANCED_OPTS is empty, use a default setting
+if [ "x$ADVANCED_OPTS" = "x" ];
+then
+        ADVANCED_OPTS="--base-path=$REPOSITORIES --export-all --enable=receive-pack"
+fi
+
+DAEMON_ARGS="--syslog --reuseaddr \
+             --user=$USER --group=$GROUP \
+             --pid-file=/var/run/$NAME.pid
+             $ADVANCED_OPTS"
+
+start() {
+	echo -n $"Starting $prog: "
+	daemon git-daemon $DAEMON_ARGS 2>/dev/null &
+	RETVAL=$?
+	echo
+	[ $RETVAL -eq 0 ] && touch /var/lock/subsys/$prog
+}
+
+stop() {
+	echo -n $"Shutting down $prog: "
+	killproc git-daemon
+	RETVAL=$?
+	echo
+	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/git-daemon
+}
+
+# See how we were called.
+case "$1" in
+  start)
+	start
+	;;
+  stop)
+	stop
+	;;
+  status)
+	status git-daemon
+	RETVAL=$?
+	;;
+  restart)
+	stop
+	start
+	;;
+  try-restart|condrestart)
+	if [ -f /var/lock/subsys/git-daemon ]; then
+	  stop
+	  start
+	fi
+	;;
+  reload|force-reload)
+	echo -n $"Re-reading $prog configuration: "
+	killproc git-daemon -HUP
+	RETVAL=$?
+	echo
+	;;
+  *)
+	echo "Usage: $prog {start|stop|restart|try-restart|reload|status}"
+	exit 2
+esac
+
+exit $RETVAL

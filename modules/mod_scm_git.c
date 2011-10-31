@@ -1,9 +1,13 @@
 #define MODULE_IDENTIFICATION	"SCM Git module"
 #define MODULE_KEYWORD		"SCM-GIT"
 #define MODULE_PORT		9418
+#define MODULE_INIT_SCRIPT	"/etc/init.d/git-daemon"
+#define MODULE_SYSCONFIG	"/etc/sysconfig/git-daemon"
+#define MODULE_SERVICE		"service git-daemon"
 #define DEBUG_MOD_GIT
 
 #include "../manager.h"
+#include "mod_scm_git.h"
 
 #ifdef DEBUG_MOD_GIT
 #define DPRINTF(fmt, args...) \
@@ -30,6 +34,33 @@ char *srvmgr_module_get_keyword(void)
 int srvmgr_module_get_port(void)
 {
 	return MODULE_PORT;
+}
+
+int create_scripts(void)
+{
+	FILE *fp;
+
+	if (access(MODULE_INIT_SCRIPT, X_OK) != 0) {
+		fp = fopen(MODULE_INIT_SCRIPT, "w");
+		if (fp == NULL)
+			return -EACCES;
+
+		fputs(git_init_script, fp);
+		fclose(fp);
+
+		chmod(MODULE_INIT_SCRIPT, 0755);
+	}
+
+	if (access(MODULE_SYSCONFIG, R_OK) != 0) {
+		fp = fopen(MODULE_SYSCONFIG, "w");
+		if (fp == NULL)
+			return -EACCES;
+
+		fputs(git_sysconfig, fp);
+		fclose(fp);
+	}
+
+	return 0;
 }
 
 char* config_read(const char *filename, char *key)
@@ -84,7 +115,8 @@ tTokenizer tokenize(char *string)
 
 int cmd_requires_authorization(char *cmd)
 {
-	return ((strcmp(cmd, "DELETE") == 0) || (strcmp(cmd, "CREATE") == 0));
+	return ((strcmp(cmd, "DELETE") == 0) || (strcmp(cmd, "CREATE") == 0)
+		|| (strcmp(cmd, "DAEMON") == 0));
 }
 
 int process_commands(char *config_file, int authorized, tTokenizer t)
@@ -258,6 +290,27 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 		snprintf(path, sizeof(path), "rm -rf %s/%s", repo_dir, name);
 		DPRINTF("%s: About to run '%s'\n", __FUNCTION__, path);
 		system(path);
+	}
+	else
+	if (strcmp(t.tokens[1], "DAEMON") == 0) {
+		int ret = -EINVAL;
+
+		if ((strcmp(t.tokens[2], "ENABLE") != 0)
+			&& (strcmp(t.tokens[2], "DISABLE") != 0))
+			return ret;
+
+		if ((ret = create_scripts()) == 0) {
+			char cmd[BUFSIZE];
+
+			snprintf(cmd, sizeof(cmd), "%s %s 2> /dev/null >/dev/null", MODULE_SERVICE,
+				(strcmp(t.tokens[2], "ENABLE") == 0) ? "start" : "stop");
+
+			DPRINTF("%s: Running '%s'\n", __FUNCTION__, cmd);
+
+			ret = WEXITSTATUS( system(cmd) );
+		}
+
+		return ret;
 	}
 	else
 		return -ENOTSUP;
