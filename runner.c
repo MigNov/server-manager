@@ -1,0 +1,93 @@
+#define DEBUG_RUNNER
+
+#include "manager.h"
+
+#ifdef DEBUG_RUNNER
+#define DPRINTF(fmt, args...) \
+do { printf("runner: " fmt , ##args); } while (0)
+#else
+#define DPRINTF(fmt, args...) do {} while(0)
+#endif
+
+void exitFunc(void)
+{
+	modules_free();
+}
+
+void firewall_init(void)
+{
+	int i;
+
+	firewall_srvmgr_chain_delete();
+	firewall_ensure_chain_exist();
+
+	for (i = 0; i < numModules; i++) {
+		if (modules[i].port > 0)
+			firewall_rule_insert(modules[i].port, IPT_PROTO_TCP, IPT_TYPE_ACCEPT);
+	}
+
+	//firewall_rule_insert(port, IPT_PROTO_TCP | IPT_PROTO_UDP, IPT_TYPE_ACCEPT);
+
+	if (firewall_srvmgr_chain_enabled() != 1) {
+		firewall_srvmgr_enable( 1 );
+	}
+
+	firewall_save( 1 );
+}
+
+int main(int argc, char *argv[])
+{
+	int ret;
+	char modPath[BUFSIZE];
+
+	atexit(exitFunc);
+	modules_init();
+
+	if (argc == 1) {
+		snprintf(modPath, sizeof(modPath), "%s/modules", dirname(argv[0]));
+		if ((ret = modules_load_all(dirname(argv[0]), modPath)) != 0) {
+			if (ret < 0) {
+				DPRINTF("%s: Cannot load modules\n", __FUNCTION__);
+				return 1;
+			}
+			char config_file[BUFSIZE];
+
+			snprintf(config_file, sizeof(config_file), "%s/manager.conf", dirname(argv[0]));
+			if (access(config_file, R_OK) == 0) {
+				char *val = config_read(config_file, "module.duplicate_handling");
+				if (val != NULL) {
+					if (strcmp(val, "fatal") == 0) {
+						fprintf(stderr, "Module duplicate set to be fatal. Exiting...\n");
+						free(val);
+						return 1;
+					}
+					else
+					if (strcmp(val, "warn") != 0) {
+						fprintf(stderr, "Error: Invalid value for module.duplicate_handling"
+							" in config file (%s).\n", basename(config_file));
+						return 1;
+					}
+
+					free(val);
+				}
+			}
+		}
+		module_dump();
+
+		if (!modules_get_active()) {
+			DPRINTF("No active module found, terminating ...\n");
+			return 2;
+		}
+
+		firewall_init();
+
+		DPRINTF("Bind result: %d\n", socket_bind(dirname(argv[0]), SOCKET_PATH));
+	}
+	else
+		if (argc == 2) {
+			DPRINTF("Write result: %d\n", socket_write(SOCKET_PATH, ADMINPWD, argv[1]));
+	}
+
+	return 0;
+}
+
