@@ -1,0 +1,33 @@
+Development plan
+----------------
+
+- Should be able access remote hosts when using TCP/IP communication
+- Integrated functionality:
+  - Linux users' administration - 20% done
+  - IPTables - 90% done
+  - expose commands to the socket interface
+- Implement 'user:password' based authentication, maybe with base64 encoding
+- Configuration spaces:
+  - SCMs (i.e. Git and SVN)
+    - Implement installation for Git module
+    - Implement installation of web-modules -> websvn, gitweb
+    - about 90% already done
+  - e-mail like POP3(s)/IMAP(s) - Dovecot - and SMTP (postfix)
+    - Implement virtual users creation & deletion
+    - Save e-mails to safe place, alter permissions
+    - Location should be optional, allow setting location in manager.conf file
+  - FTP(s) & SCP
+    - Maybe revive the limshell project for those purposes, join with SSL layer and listen on some other port
+    - Could be database connected
+  - HTTP(s) (httpd.conf) && PHP (php.ini) configuration
+    - Allow both raw php.ini editing and configurable options in select of HTML page (for frontend)
+  - CRON for both scripts and binaries
+    - Could be disabled for binaries/cgi scripts by root user
+  - Disk quotes
+  - SELinux
+  - Databases
+    - allow new user creation, user deletion, database creation and deletion, setting permissions per database
+    - allow remote access
+    - mod_db_mysql
+    - mod_db_pgsql
+  - Backups
