@@ -1,11 +1,15 @@
+#define	MODULE_CMD_SERVER	"/usr/bin/svnserve"
+#define MODULE_FILE_SERVER	"/etc/xinetd.d/svn"
+#define	MODULE_INIT_SCRIPT	"/etc/init.d/svn"
 #define MODULE_IDENTIFICATION	"SCM SVN module"
 #define MODULE_KEYWORD          "SCM-SVN"
 #define MODULE_PORT		PORT_TCP(3690)
-#define DEBUG_MOD_GIT
+#define DEBUG_MOD_SVN
 
 #include "../manager.h"
+#include "mod_scm_svn.h"
 
-#ifdef DEBUG_MOD_GIT
+#ifdef DEBUG_MOD_SVN
 #define DPRINTF(fmt, args...) \
 do { printf("mod_scm_svn: " fmt , ##args); } while (0)
 #else
@@ -55,6 +59,117 @@ char* config_read(const char *filename, char *key)
 	fclose(fp);
 
 	return NULL;
+}
+
+char *srvmgr_module_install(char *base_path)
+{
+	char *val = NULL;
+        char config_file[BUFSIZE];
+
+	snprintf(config_file, sizeof(config_file), "%s/manager.conf", base_path);
+	if (access(config_file, R_OK) != 0) {
+		DPRINTF("%s: Cannot read configuration file '%s'\n", __FUNCTION__,
+			config_file);
+		return strdup("ERR");
+	}
+
+	val = config_read(config_file, "scm.svn.user");
+	return val ? strdup(val) : strdup("ERR");
+}
+
+int srvmgr_module_install_post(char *base_path)
+{
+	int ret = -EINVAL;
+	FILE *fp = NULL;
+	char cmd[BUFSIZE];
+	char *user = NULL;
+	char *binary = NULL;
+	char *repo_dir = NULL;
+        char config_file[BUFSIZE];
+
+	snprintf(config_file, sizeof(config_file), "%s/manager.conf", base_path);
+	if (access(config_file, R_OK) != 0) {
+		DPRINTF("%s: Cannot read configuration file '%s'\n", __FUNCTION__,
+			config_file);
+		return ret;
+	}
+
+	if ((binary = config_read(config_file, "scm.svn.binary")) == NULL) {
+		DPRINTF("%s: Missing 'scm.svn.binary' entry in %s\n", __FUNCTION__,
+			config_file);
+
+		return ret;
+	}
+
+	if (access(binary, X_OK) != 0) {
+		DPRINTF("%s: Cannot find SVN executable. Please set valid SVN binary to 'scm.svn.binary' "
+				"entry in %s\n", __FUNCTION__, config_file);
+
+		return ret;
+	}
+
+	if ((repo_dir = config_read(config_file, "scm.svn.repo_dir")) == NULL) {
+		DPRINTF("%s: Missing 'scm.svn.repo_dir' entry in %s\n", __FUNCTION__,
+			config_file);
+
+		return ret;
+	}
+
+	user = config_read(config_file, "scm.svn.user");
+	if (user == NULL)
+		return ret;
+
+	if (access(repo_dir, X_OK) != 0) {
+	        snprintf(cmd, sizeof(cmd), "%s -v -o %s -g %s -m 0755 -d %s 2>/dev/null > /dev/null",
+			CMD_INSTALL, user, user, repo_dir);
+		DPRINTF("%s: Running '%s'\n", __FUNCTION__, cmd);
+		ret = WEXITSTATUS(system(cmd));
+		if (ret != 0)
+			return ret;
+	}
+
+	if (access(MODULE_INIT_SCRIPT, R_OK) != 0) {
+		fp = fopen(CONFIG_INETD, "a");
+		if (fp == NULL)
+			return -EACCES;
+
+		fprintf(fp, "svn stream tcp nowait %s %s svnserve -i\n", user, MODULE_CMD_SERVER);
+		fclose(fp);
+
+		fp = fopen(MODULE_FILE_SERVER, "w");
+		if (fp == NULL)
+			return -EACCES;
+
+		fprintf(fp, svn_inetd_script, user, MODULE_CMD_SERVER, repo_dir);
+		fclose(fp);
+
+		fp = fopen("/etc/sysconfig/svn", "w");
+		if (fp == NULL)
+			return -EACCES;
+
+		fprintf(fp, "REPODIR=\"%s\"\n", repo_dir);
+		fclose(fp);
+
+		fp = fopen("/tmp/svn-wrapper", "w");
+		fputs(svn_init_script_wrapper, fp);
+		fclose(fp);
+		chmod(MODULE_INIT_SCRIPT, 0755);
+		system("/tmp/svn-wrapper");
+
+		unlink("/tmp/svn-wrapper");
+
+		fp = fopen(MODULE_INIT_SCRIPT, "w");
+		if (fp == NULL)
+			return -EACCES;
+
+		fputs(svn_init_script, fp);
+		fclose(fp);
+
+		chmod(MODULE_INIT_SCRIPT, 0755);
+		system("chkconfig svn on");
+	}
+
+        return 0;
 }
 
 tTokenizer tokenize(char *string)

@@ -1,6 +1,8 @@
 #ifndef MODULES_H_DEFINED
 #define MODULES_H_DEFINED
 
+#include <pwd.h>
+#include <grp.h>
 #include <stdio.h>
 #include <dlfcn.h>
 #include <errno.h>
@@ -55,5 +57,7 @@ char* config_read(const char *filename, char *key);
 
 #define GET_PORT_TCP(x)	(int)((x >> 16) & 0xFFFF)
 #define GET_PORT_UDP(x)	(int)(x & 0xFFFF)
+#define CMD_INSTALL	"/usr/bin/install"
+#define CONFIG_INETD	"/etc/inetd.conf"
 
 #endif

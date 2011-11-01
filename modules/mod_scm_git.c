@@ -63,6 +63,17 @@ int create_scripts(void)
 	return 0;
 }
 
+char *srvmgr_module_install(void)
+{
+	char ret[64];
+
+	if (create_scripts() != 0)
+		snprintf(ret, sizeof(ret), "ERR");
+
+	snprintf(ret, sizeof(ret), "svn|SVN Owner");
+	return strdup(ret);
+}
+
 char* config_read(const char *filename, char *key)
 {
 	FILE *fp;
@@ -294,21 +305,17 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 	else
 	if (strcmp(t.tokens[1], "DAEMON") == 0) {
 		int ret = -EINVAL;
+		char cmd[BUFSIZE];
 
 		if ((strcmp(t.tokens[2], "ENABLE") != 0)
 			&& (strcmp(t.tokens[2], "DISABLE") != 0))
 			return ret;
 
-		if ((ret = create_scripts()) == 0) {
-			char cmd[BUFSIZE];
+		snprintf(cmd, sizeof(cmd), "%s %s 2> /dev/null >/dev/null", MODULE_SERVICE,
+			(strcmp(t.tokens[2], "ENABLE") == 0) ? "start" : "stop");
 
-			snprintf(cmd, sizeof(cmd), "%s %s 2> /dev/null >/dev/null", MODULE_SERVICE,
-				(strcmp(t.tokens[2], "ENABLE") == 0) ? "start" : "stop");
-
-			DPRINTF("%s: Running '%s'\n", __FUNCTION__, cmd);
-
-			ret = WEXITSTATUS( system(cmd) );
-		}
+		DPRINTF("%s: Running '%s'\n", __FUNCTION__, cmd);
+		ret = WEXITSTATUS( system(cmd) );
 
 		return ret;
 	}

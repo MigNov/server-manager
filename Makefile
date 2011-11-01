@@ -1,6 +1,6 @@
 RM=rm
 CC=gcc
-SOURCES=config.c iptables.c sockets.c modules.c runner.c manager.h
+SOURCES=config.c iptables.c users.c sockets.c modules.c runner.c manager.h
 BINARY=manager
 OUTDIR=bindir
 

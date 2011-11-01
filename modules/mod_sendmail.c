@@ -27,6 +27,11 @@ int srvmgr_module_is_applicable(char *base_path)
 	return 0;
 }
 
+char *srvmgr_module_install(void)
+{
+	return strdup( "ERR" );
+}
+
 int srvmgr_module_run(char *base_path, char *data, int authorized)
 {
 	if (strncmp(data, MODULE_KEYWORD, strlen(MODULE_KEYWORD)) != 0)

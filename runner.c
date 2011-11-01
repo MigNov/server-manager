@@ -21,6 +21,7 @@ void exitFunc(void)
 	firewall_save( 1 );
 
 	modules_free();
+	DPRINTF("Terminating ...\n");
 }
 
 void exitFunc2(int sig)
@@ -64,6 +65,9 @@ int main(int argc, char *argv[])
 
 	parentPid = getpid();
 	DPRINTF("Parent PID is %d\n", parentPid);
+
+	//printf("%d\n", users_add("mix", "mig", NULL, NULL, NULL));
+	//return 0;
 
 	if (argc == 1) {
 		snprintf(modPath, sizeof(modPath), "%s/modules", dirname(argv[0]));

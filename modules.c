@@ -8,6 +8,72 @@ do { printf("modules: " fmt , ##args); } while (0)
 #define DPRINTF(fmt, args...) do {} while(0)
 #endif
 
+int module_install(char *base_path, char *libname)
+{
+	int ret = -EINVAL;
+	char path[BUFSIZE];
+	void *lib = NULL;
+	char *val = NULL;
+	void *pInstall = NULL;
+	typedef char* (*tInstallFunc) (char*);
+
+	snprintf(path, sizeof(path), "%s/var", base_path);
+	mkdir(path, 0755);
+
+	snprintf(path, sizeof(path), "%s/var/%s-install-lock", base_path, basename(libname));
+	if (access(path, R_OK) == 0) {
+		DPRINTF("%s: Module %s already installed\n", __FUNCTION__, basename(libname));
+		return 0;
+	}
+
+	lib = dlopen(libname, RTLD_LAZY);
+	if (lib == NULL) {
+		DPRINTF("%s: Cannot load library '%s'", __FUNCTION__, libname);
+		return -EINVAL;
+	}
+
+	pInstall = dlsym(lib, "srvmgr_module_install");
+	if (pInstall == NULL) {
+		DPRINTF("%s: Cannot read installation function symbol from library %s\n",
+				__FUNCTION__, libname);
+		goto cleanup;
+        }
+	tInstallFunc fInstall = (tInstallFunc) pInstall;
+	if (fInstall == NULL)
+		goto cleanup;
+
+	val = fInstall(base_path);
+	if ((val != NULL) && (strcmp(val, "ERR") == 0)) {
+		fprintf(stderr, "Warning: Cannot install module %s\n", basename(libname));
+		ret = -EIO;
+	}
+	else {
+		ret = users_add(val, val, NULL, NULL, NULL);
+		if ((ret == 0) || (ret == -EEXIST)) {
+			void *pPostInstall = NULL;
+
+			ret = 0;
+			pPostInstall = dlsym(lib, "srvmgr_module_install_post");
+			if (pPostInstall != NULL) {
+				typedef int (*tPostInstallFunc) (char*);
+				tPostInstallFunc fPostInstall = (tPostInstallFunc) pPostInstall;
+				if (fPostInstall != NULL)
+					ret = fPostInstall(base_path);
+			}
+
+			if (ret == 0) {
+				/* Touches the module lock file */
+				close( open(path, O_WRONLY | O_CREAT, 0600) );
+				ret = 0;
+			}
+		}
+	}
+
+cleanup:
+	dlclose(lib);
+	return ret;
+}
+
 int module_load(char *base_path, char *libname)
 {
 	int ret = -1;
@@ -19,7 +85,13 @@ int module_load(char *base_path, char *libname)
 	void *pIsApplicable = NULL;
 	typedef char* (*tIdentFunc) (void);
 	typedef char* (*tKeywordFunc) (void);
+	typedef char* (*tInstallFunc) (void);
 	typedef int   (*tIsApplicableFunc) (char*);
+
+	if (module_install(base_path, libname) != 0) {
+		DPRINTF("Error: Module %s installation failed\n", basename(libname));
+		return -EINVAL;
+	}
 
 	lib = dlopen(libname, RTLD_LAZY);
 	if (lib == NULL) {
@@ -154,7 +226,7 @@ void module_dump(void)
 	for (i = 0; i < numModules; i++) {
 		DPRINTF("Module #%d:\n", i+1);
 		DPRINTF("\tHandle: 0x%p\n", modules[i].handle);
-		DPRINTF("\tFilename: %s\n", modules[i].name);
+		DPRINTF("\tFilename: %s\n", basename(modules[i].name));
 		DPRINTF("\tIdentification: %s\n", modules[i].ident);
 		DPRINTF("\tKeyword: %s\n", modules[i].keyword);
 
@@ -170,6 +242,9 @@ void modules_free(void)
 {
 	int i;
 
+	if (numModules == 0)
+		return;
+
 	for (i = 0; i < numModules; i++) {
 		dlclose(modules[i].handle);
 		free(modules[i].ident);
@@ -179,6 +254,8 @@ void modules_free(void)
 		free(modules[i].keyword);
 		modules[i].keyword = NULL;
 	}
+
+	numModules = 0;
 
 	free(modules);
 }
