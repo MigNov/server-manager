@@ -76,3 +76,30 @@ Example: SCM-SVN DELETE REPO test
          This command deletes the repo named 'test' from the repo_dir.
 
 
+BIND DAEMON COMMANDS (DNS-BIND)
+-------------------------------
+
+1) Domain zone creation
+
+Syntax: DNS-BIND CREATE ZONE $domain_name
+
+Purpose: Creates the new domain zone file and appends new file information into master file.
+
+Example: DNS-BIND CREATE ZONE domain.tld
+
+         This command will create empty (but check-working) zone file for domain domain.tld
+         with appropriate entry added to the master file.
+
+2) Domain record creation
+
+Syntax: DNS-BIND CREATE $type RECORD $any_value FOR $name_with_domain_suffix
+
+Purpose: Creates a new record of specified type and value to be appended to the domain
+         zone file under name corresponding to the first token of $name_with_domain_suffix.
+
+Example: DNS-BIND CREATE TXT RECORD some value even with spaces FOR name.domain.tld
+
+         This command will create a new TXT record for domain domain.tld named as name
+         (extracted from name.domain.tld) with value "some value even with spaces" and
+         and the value will be appended to the domain zone file.
+

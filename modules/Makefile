@@ -1,7 +1,7 @@
 CC=gcc
 OUTDIR=../bindir/modules
 
-all:	modscmgit modscmsvn modsendmail
+all:	modscmgit modscmsvn moddnsbind modsendmail
 
 modscmgit:
 	mkdir -p $(OUTDIR)
@@ -13,6 +13,12 @@ modscmsvn:
 	mkdir -p $(OUTDIR)
 	$(CC) -c -fPIC mod_scm_svn.c
 	$(CC) -shared -fPIC -o $(OUTDIR)/mod_scm_svn.so mod_scm_svn.o
+	rm -f *.o
+
+moddnsbind:
+	mkdir -p $(OUTDIR)
+	$(CC) -c -fPIC mod_dns_bind.c
+	$(CC) -shared -fPIC -o $(OUTDIR)/mod_dns_bind.so mod_dns_bind.o
 	rm -f *.o
 
 modsendmail:
