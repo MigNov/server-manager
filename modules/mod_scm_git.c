@@ -65,13 +65,10 @@ int create_scripts(void)
 
 char *srvmgr_module_install(void)
 {
-	char ret[64];
-
 	if (create_scripts() != 0)
-		snprintf(ret, sizeof(ret), "ERR");
+		return strdup( "ERR" );
 
-	snprintf(ret, sizeof(ret), "svn|SVN Owner");
-	return strdup(ret);
+	return strdup( "gitosis" );
 }
 
 char* config_read(const char *filename, char *key)
