@@ -12,6 +12,9 @@ Development plan
     - Implement installation for Git module
     - Implement installation of web-modules -> websvn, gitweb
     - about 90% already done
+  - DNS administration (BIND)
+    - Creation of zone files and zone entries
+    - Deletion of zone files and zone entries
   - e-mail like POP3(s)/IMAP(s) - Dovecot - and SMTP (postfix)
     - Implement virtual users creation & deletion
     - Save e-mails to safe place, alter permissions

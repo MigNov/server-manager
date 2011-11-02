@@ -71,6 +71,8 @@ int module_install(char *base_path, char *libname)
 
 cleanup:
 	dlclose(lib);
+	if (ret == 0)
+		DPRINTF("%s: Module %s successfully installed\n", __FUNCTION__, basename(libname));
 	return ret;
 }
 
