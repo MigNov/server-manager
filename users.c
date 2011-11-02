@@ -49,6 +49,28 @@ int users_check_group(char *name)
 	return 0;
 }
 
+gid_t users_group_id(char *name)
+{
+	struct group *gr;
+
+	gr = getgrnam(name);
+	if (gr == NULL)
+		return -1;
+
+	return gr->gr_gid;
+}
+
+uid_t users_user_id(char *name)
+{
+	struct passwd *pw;
+
+	pw = getpwnam(name);
+	if (pw == NULL)
+		return -1;
+
+	return pw->pw_uid;
+}
+
 int users_group_add(char *name)
 {
 	char cmd[BUFSIZE];
