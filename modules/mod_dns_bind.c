@@ -173,19 +173,50 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 
 		if (strcmp(t.tokens[2], "ZONE") == 0) {
 			char path[BUFSIZE];
+			char line[BUFSIZE];
+			char b[BUFSIZE];
+			int exists = 0;
 
 			snprintf(path, sizeof(path), "%s/etc/%s", chroot_dir, MODULE_MASTER_ZONETABLE);
-			FILE *fp = fopen(path, "a");
+
+			FILE *fp = fopen(path, "r");
+			if (fp == NULL) {
+				DPRINTF("%s: Cannot open '%s' for reading\n", __FUNCTION__, path);
+				return -EIO;
+			}
+			
+			snprintf(b, sizeof(b), "zone \"%s\" IN {\n", t.tokens[3]);
+			while (!feof(fp)) {
+				memset(line, 0, sizeof(line));
+				
+				fgets(line, sizeof(line), fp);
+				
+				if (strcmp(line, b) == 0)
+					exists = 1;
+			}
+			
+			fclose(fp);
+			
+			if (exists) {
+				DPRINTF("%s: Zone %s already exists\n", __FUNCTION__, t.tokens[3]);
+				return -EEXIST;
+			}
+
+			fp = fopen(path, "a");
 			if (fp == NULL) {
 				DPRINTF("%s: Cannot access '%s'\n", __FUNCTION__, path);
 				return -EIO;
 			}
 
-			fprintf(fp, "zone \"%s\" IN {\n\ttype master;\n\tfile \"%s.db\";\n\tallow-update { any; };\n};\n\n",
+			fprintf(fp, "zone \"%s\" IN {\n\ttype master;\n\tfile \"%s.db\";\n\tallow-update { any; };\n};\n",
 				t.tokens[3], t.tokens[3]);
 			fclose(fp);
 
-			chown(path, users_user_id(user), users_group_id(group));
+			if (chown(path, users_user_id(user), users_group_id(group)) != 0) {
+				DPRINTF("%s: Cannot alter permissions on '%s' (%d, %d)\n", __FUNCTION__, path,
+						users_user_id(user), users_group_id(group));
+				return -EPERM;
+			}
 
 			snprintf(path, sizeof(path), "%s/var/named/%s.db", chroot_dir, t.tokens[3]);
 
@@ -194,11 +225,15 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 				DPRINTF("%s: Cannot access '%s'\n", __FUNCTION__, path);
 				return -EIO;
 			}
-			fprintf(fp, "$TTL 86400\n$ORIGIN %s.\n@  IN SOA %s. %s. %d%d 10800 3600 604800 3600\n"
+			fprintf(fp, "$TTL 86400\n$ORIGIN %s.\n@ IN SOA %s. %s. %d%d 10800 3600 604800 3600\n"
 					"@ IN NS      %s.\n", t.tokens[3], ns1, ns1, time(NULL), rand() % 100, ns1);
 			fclose(fp);
 
-			chown(path, users_user_id(user), users_group_id(group));
+			if (chown(path, users_user_id(user), users_group_id(group)) != 0) {
+				DPRINTF("%s: Cannot alter permissions on '%s' (%d, %d)\n", __FUNCTION__, path,
+						users_user_id(user), users_group_id(group));
+				return -EPERM;
+			}
 		}
 		else
 		if (strcmp(t.tokens[3], "RECORD") == 0) {
@@ -209,6 +244,7 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 			char line[1024] = { 0 };
 			char data[256] = { 0 };
 			char name[256] = { 0 };
+			char name2[256] = { 0 };
 			int exists = 0;
 			FILE *fp = NULL;
 
@@ -261,11 +297,13 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 				return -EINVAL;
 			}
 
+			strcpy(name2, name);
+			strcat(name2, " ");
 			while (!feof(fp)) {
 				memset(line, 0, sizeof(line));
 
 				fgets(line, sizeof(line), fp);
-				if (strncmp(line, name, strlen(name)) == 0)
+				if (strncmp(line, name2, strlen(name2)) == 0)
 					exists = 1;
 			}
 			fclose(fp);
@@ -285,8 +323,160 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 			fprintf(fp, "%s IN %s %s\n", name, type, data);
 			fclose(fp);
 
-			DPRINTF("%s: %s record %s created and saved into %s\n", __FUNCTION__, type, name, path);
+			DPRINTF("%s: %s record %s.%s created and saved into %s\n", __FUNCTION__, type, name, domain, path);
 			free(type);
+		}
+		else
+			return -ENOTSUP;
+	}
+	else
+	if (strcmp(t.tokens[1], "DELETE") == 0) {
+		if (t.numTokens < 4)
+			return -EINVAL;
+
+		if (strcmp(t.tokens[2], "ZONE") == 0) {
+			char path[BUFSIZE];
+			char line[BUFSIZE];
+			char tmp[BUFSIZE];
+			char b[BUFSIZE];
+			int skip = 0;
+			int deleted = 0;
+
+			snprintf(path, sizeof(path), "%s/etc/%s", chroot_dir, MODULE_MASTER_ZONETABLE);
+			FILE *fp = fopen(path, "r");
+			if (fp == NULL) {
+				DPRINTF("%s: Cannot open '%s' for reading\n", __FUNCTION__, path);
+				return -EIO;
+			}
+			
+			strcpy(tmp, "/tmp/srvmgr-bind.XXXXXX");
+			mkstemp(tmp);
+			
+			FILE *fp2 = fopen(tmp, "w");
+			if (fp2 == NULL) {
+				DPRINTF("%s: Cannot open '%s' for writing\n", __FUNCTION__, tmp);
+				return -EIO;
+			}
+
+			snprintf(b, sizeof(b), "zone \"%s\" IN {\n", t.tokens[3]);
+			while (!feof(fp)) {
+				memset(line, 0, sizeof(line));
+				
+				fgets(line, sizeof(line), fp);
+				
+				if (strcmp(line, b) == 0)
+					skip = 1;
+					
+				if (!skip)
+					fputs(line, fp2);
+				else
+					deleted = 1;
+
+				if ((skip > -1) && (strncmp(line, "};", 2) == 0))
+					skip = 0;
+			}
+			
+			fclose(fp2);
+			
+			if (!deleted) {
+				DPRINTF("%s: Zone %s not found\n", __FUNCTION__, t.tokens[3]);
+				return -ENOENT;
+			}
+
+			snprintf(b, sizeof(b), "mv %s %s", tmp, path);
+			system(b);
+			
+			DPRINTF("%s: Running '%s'\n", __FUNCTION__, b);
+			
+			if (chown(path, users_user_id(user), users_group_id(group)) != 0) {
+				DPRINTF("%s: Cannot alter permissions on '%s' (%d, %d)\n", __FUNCTION__, path,
+						users_user_id(user), users_group_id(group));
+				return -EPERM;
+			}
+
+			snprintf(path, sizeof(path), "%s/var/named/%s.db", chroot_dir, t.tokens[3]);
+			unlink(path);
+		}
+		else
+		if (strcmp(t.tokens[2], "RECORD") == 0) {
+			int i;
+			char *domain = strdup( t.tokens[3] );
+			char path[BUFSIZE];
+			char line[1024] = { 0 };
+			char tmp[256] = { 0 };
+			char name[256] = { 0 };
+			char name2[256] = { 0 };
+			int deleted = 0;
+			FILE *fp = NULL;
+			FILE *fp2 = NULL;
+
+			if (domain == NULL) {
+				DPRINTF("%s: Domain is not specified\n", __FUNCTION__);
+				return -EINVAL;
+			}
+
+			strncpy(name, domain, sizeof(name));
+			for (i = 0; i < strlen(name); i++)
+				if (name[i] == '.')
+					break;
+
+			name[i] = 0;
+
+			domain += strlen(name) + 1;
+
+			strcpy(tmp, "/tmp/srvmgr-bind.XXXXXX");
+			mkstemp(tmp);
+
+			snprintf(path, sizeof(path), "%s/var/named/%s.db", chroot_dir, domain);
+			if (access(path, R_OK) != 0) {
+				DPRINTF("%s: Cannot access domain zone file '%s'\n", __FUNCTION__, path);
+				return -EINVAL;
+			}
+
+			fp = fopen(path, "r");
+			if (fp == NULL) {
+				DPRINTF("%s: Cannot open domain zone file '%s' for reading\n", __FUNCTION__, path);
+				return -EINVAL;
+			}
+
+			fp2 = fopen(tmp, "w");
+			if (fp == NULL) {
+				DPRINTF("%s: Cannot open domain zone file '%s' for writing\n", __FUNCTION__, path);
+				return -EINVAL;
+			}
+
+			strcpy(name2, name);
+			strcat(name2, " ");
+			while (!feof(fp)) {
+				memset(line, 0, sizeof(line));
+
+				fgets(line, sizeof(line), fp);
+				if (strncmp(line, name2, strlen(name2)) != 0)
+					fputs(line, fp2);
+				else
+					deleted = 1;
+			}
+			fclose(fp2);
+			fclose(fp);
+			
+			if (!deleted) {
+				DPRINTF("%s: Entry %s.%s doesn't exist\n", __FUNCTION__, name, domain);
+				unlink(tmp);
+				return -ENOENT;
+			}
+
+			DPRINTF("%s: %s.%s deleted from %s\n", __FUNCTION__, name, domain, path);
+
+			snprintf(line, sizeof(tmp), "mv %s %s", tmp, path);
+			system(line);
+			
+			DPRINTF("%s: Running '%s'\n", __FUNCTION__, line);
+			
+			if (chown(path, users_user_id(user), users_group_id(group)) != 0) {
+				DPRINTF("%s: Cannot alter permissions on '%s' (%d, %d)\n", __FUNCTION__, path,
+						users_user_id(user), users_group_id(group));
+				return -EPERM;
+			}
 		}
 		else
 			return -ENOTSUP;

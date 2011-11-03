@@ -103,3 +103,15 @@ Example: DNS-BIND CREATE TXT RECORD some value even with spaces FOR name.domain.
          (extracted from name.domain.tld) with value "some value even with spaces" and
          and the value will be appended to the domain zone file.
 
+3) Domain zone deletion
+
+Syntax: DNS-BIND DELETE ZONE domain.tld
+
+Purpose: Deletes the previously created DNS zone.
+
+4) Domain record deletion
+
+Syntax: DNS-BIND DELETE RECORD record.domain.tld
+
+Purpose: Deletes the previously created $record for zone domain.tld.
+
