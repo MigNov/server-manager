@@ -63,12 +63,62 @@ int create_scripts(void)
 	return 0;
 }
 
-char *srvmgr_module_install(void)
+char *srvmgr_module_install(char *base_path)
 {
+	char *val = NULL;
+	char config_file[BUFSIZE];
+
+	snprintf(config_file, sizeof(config_file), "%s/manager.conf", base_path);
+	if (access(config_file, R_OK) != 0) {
+		DPRINTF("%s: Cannot read configuration file '%s'\n", __FUNCTION__,
+			config_file);
+		return strdup("ERR");
+	}
+
+	val = config_read(config_file, "scm.git.user");
+	if (val == NULL)
+		return strdup( "ERR" );
+
 	if (create_scripts() != 0)
 		return strdup( "ERR" );
 
-	return strdup( "gitosis" );
+	return strdup( val );
+}
+
+char *srvmgr_module_install_post(char *base_path)
+{
+	char cmd[BUFSIZE];
+	char *val = NULL;
+	char *keyfile = NULL;
+	char config_file[BUFSIZE];
+
+	snprintf(config_file, sizeof(config_file), "%s/manager.conf", base_path);
+	if (access(config_file, R_OK) != 0) {
+		DPRINTF("%s: Cannot read configuration file '%s'\n", __FUNCTION__,
+			config_file);
+		return strdup("ERR");
+	}
+
+	val = config_read(config_file, "scm.git.user");
+	if (val == NULL)
+		return strdup( "ERR" );
+
+	keyfile = config_read(config_file, "scm.git.public_key");
+	if (keyfile == NULL) {
+		DPRINTF("%s: Keyfile is not defined. Please define it first\n", __FUNCTION__);
+		return strdup( "ERR" );
+	}
+
+	if (access(keyfile, R_OK) != 0) {
+		DPRINTF("%s: Cannot access public key file '%s'\n", __FUNCTION__, keyfile);
+		return strdup( "ERR" );
+	}
+
+	snprintf(cmd, sizeof(cmd), "sudo -H -u %s gitosis-init < %s", val, keyfile);
+	if (WEXITSTATUS(system(cmd)) != 0)
+		return strdup( "ERR" );
+
+	return strdup( val );
 }
 
 char* config_read(const char *filename, char *key)
