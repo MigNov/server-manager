@@ -83,7 +83,7 @@ int users_group_add(char *name)
 	return WEXITSTATUS(system(cmd));
 }
 
-int users_add(char *name, char *groupName, char *description, char *homeDir, char *shell)
+int users_add(char *name, char *password, char *groupName, char *description, char *homeDir, char *shell)
 {
 	int ret;
 	char cmd[BUFSIZE];
@@ -109,10 +109,11 @@ int users_add(char *name, char *groupName, char *description, char *homeDir, cha
 	else
 		strncpy(homedir, homeDir, sizeof(homedir));
 
-	snprintf(cmd, sizeof(cmd), "%s -c \"%s\" -d %s -m -g %s -s %s %s 2> /dev/null > /dev/null", BINARY_USERADD,
-		description ? description : "-", homedir, groupName, shell ? shell : SHELL_DEFAULT, name);
+	snprintf(cmd, sizeof(cmd), "%s -c \"%s\" -d %s -p %s -m -g %s -s %s %s 2> /dev/null > /dev/null", BINARY_USERADD,
+		description ? description : "-", homedir, crypt(password, name), groupName, shell ? shell : SHELL_DEFAULT, name);
 	ret = WEXITSTATUS(system(cmd));
-	DPRINTF("%s: Result of '%s' is %d\n", __FUNCTION__, cmd, ret);
+
+	DPRINTF("%s: Addition of user %s exited with code %d\n", __FUNCTION__, name, ret);
 	return ret;
 }
 

@@ -286,6 +286,22 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 
 				DPRINTF("%s: Allowing full access for all users\n", __FUNCTION__);
 			}
+			else
+			if (strcmp(t.tokens[4], "FOR") == 0) {
+				char *svnuser, *svnpass;
+				if (t.numTokens < 8)
+					return -EINVAL;
+				svnuser = strdup(t.tokens[5]);
+				if (strcmp(t.tokens[6], "PASSWORD") == 0)
+					svnpass = strdup(t.tokens[7]);
+
+				users_add(svnuser, svnpass, svn_group, "SVN User", NULL, NULL);
+
+				snprintf(path, sizeof(path), "chown -R %s.%s %s", svnuser, svn_group,
+						name);
+				DPRINTF("%s: Running '%s'\n", __FUNCTION__, path);
+				system(path);
+			}
 		}
 
 		chdir(old_path);

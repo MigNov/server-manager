@@ -55,10 +55,13 @@ SVN REPOSITORY COMMANDS (SCM-SVN):
 
 1) CREATE REPO
 
-Syntax: SCM-SVN CREATE REPO $name [ALLOW-ALL]
+Syntax: SCM-SVN CREATE REPO $name [ALLOW-ALL | FOR $username PASSWORD $password]
 
 Purpose: Creates a new subversion (SVN) repository $name with option to
-         allow full access to all or not (ALLOW-ALL option).
+         allow full access to all or not (ALLOW-ALL option). If you input
+         "FOR $username PASSWORD $password" clause you will associate
+         the repo with user $username which will be created if it doesn't
+         exist or reused if it already exists.
 
 Example: SCM-SVN CREATE REPO test ALLOW-ALL
 
