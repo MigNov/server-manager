@@ -98,6 +98,17 @@ tTokenizer tokenize(char *string)
 	return t;
 }
 
+int bind_enable(int enable)
+{
+	int ret;
+	char cmd[256];
+
+	snprintf(cmd, sizeof(cmd), "%s %s > /dev/null &2> /dev/null", MODULE_SERVICE, enable ? "start" : "stop");
+	ret = WEXITSTATUS( system(cmd) );
+	DPRINTF("%s: Command '%s' returned with error code %d\n", __FUNCTION__, cmd, ret);
+	return ret;
+}
+
 int cmd_requires_authorization(char *cmd)
 {
 	return ((strcmp(cmd, "DELETE") == 0) || (strcmp(cmd, "CREATE") == 0)
@@ -196,6 +207,51 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 		goto cleanup;
 	}
 
+	if (strcmp(t.tokens[1], "DAEMON") == 0) {
+		if (t.numTokens < 2) {
+			ret = -EINVAL;
+			goto cleanup;
+		}
+
+		if ((strcmp(t.tokens[2], "ENABLE") == 0) || (strcmp(t.tokens[2], "START") == 0)) {
+			if (bind_enable(1) != 0) {
+				DPRINTF("%s: Cannot start the daemon\n", __FUNCTION__);
+				ret = -EIO;
+				goto cleanup;
+			}
+			else
+				DPRINTF("%s: Daemon started succesfully\n", __FUNCTION__);
+		}
+		else
+		if ((strcmp(t.tokens[2], "DISABLE") == 0) || (strcmp(t.tokens[2], "STOP") == 0)) {
+			if (bind_enable(0) != 0) {
+				DPRINTF("%s: Cannot stop the daemon\n", __FUNCTION__);
+				ret = -EIO;
+				goto cleanup;
+			}
+			else
+				DPRINTF("%s: Daemon stopped successfully\n", __FUNCTION__);
+		}
+		else
+		if (strcmp(t.tokens[2], "RESTART") == 0) {
+			if (bind_enable(0) != 0) {
+				DPRINTF("%s: Cannot stop the daemon\n", __FUNCTION__);
+				ret = -EIO;
+				goto cleanup;
+			}
+
+			if (bind_enable(1) != 0) {
+				DPRINTF("%s: Cannot restart the daemon\n", __FUNCTION__);
+				ret = -EIO;
+				goto cleanup;
+			}
+
+			DPRINTF("%s: Daemon restarted successfully\n", __FUNCTION__);
+		}
+		else
+			ret = -ENOTSUP;
+	}
+	else
 	if (strcmp(t.tokens[1], "CREATE") == 0) {
 		if (t.numTokens < 4) {
 			ret = -EINVAL;
@@ -261,8 +317,8 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 				ret = -EIO;
 				goto cleanup;
 			}
-			fprintf(fp, "$TTL 86400\n$ORIGIN %s.\n@ IN SOA %s. %s. %d%d 10800 3600 604800 3600\n"
-					"@ IN NS      %s.\n", t.tokens[3], ns1, ns1, time(NULL), rand() % 100, ns1);
+			fprintf(fp, "$TTL 86400\n$ORIGIN %s.\n@ IN SOA %s. %s. %d 10800 3600 604800 3600\n"
+					"@ IN NS      %s.\n", t.tokens[3], ns1, ns1, time(NULL)+(rand() % 100), ns1);
 			fclose(fp);
 
 			if (chown(path, users_user_id(user), users_group_id(group)) != 0) {

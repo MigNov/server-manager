@@ -232,8 +232,13 @@ void module_dump(void)
 		DPRINTF("\tIdentification: %s\n", modules[i].ident);
 		DPRINTF("\tKeyword: %s\n", modules[i].keyword);
 
+		if (GET_PORT_TCP(modules[i].port) && GET_PORT_UDP(modules[i].port))
+			DPRINTF("\tPorts: TCP port %d, UDP port %d\n", GET_PORT_TCP(modules[i].port),
+				GET_PORT_UDP(modules[i].port));
+		else
 		if (GET_PORT_TCP(modules[i].port))
 			DPRINTF("\tTCP Port: %d\n", GET_PORT_TCP(modules[i].port));
+		else
 		if (GET_PORT_UDP(modules[i].port))
 			DPRINTF("\tUDP Port: %d\n", GET_PORT_UDP(modules[i].port));
 	}
