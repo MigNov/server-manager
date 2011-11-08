@@ -128,48 +128,79 @@ uid_t users_user_id(char *name)
 
 int process_commands(char *config_file, int authorized, tTokenizer t)
 {
+	int  ret = 0;
 	char *ns1 = NULL;
 	char *user = NULL;
 	char *group = NULL;
 	char *chroot_dir = NULL;
+	int  allow_multiple;
+	char *allow_multiple_records = NULL;
 
 	if ((user = config_read(config_file, "dns.bind.user")) == NULL) {
 		DPRINTF("%s: Missing 'dns.bind.user' entry in %s\n", __FUNCTION__,
 			config_file);
 
-		return -EINVAL;
+		ret = -EINVAL;
+		goto cleanup;
 	}
 
 	if ((group = config_read(config_file, "dns.bind.group")) == NULL) {
 		DPRINTF("%s: Missing 'dns.bind.group' entry in %s\n", __FUNCTION__,
 			config_file);
 
-		return -EINVAL;
+		ret = -EINVAL;
+		goto cleanup;
 	}
 
 	if ((ns1 = config_read(config_file, "dns.bind.nameserver")) == NULL) {
 		DPRINTF("%s: Missing 'dns.bind.nameserver' entry in %s\n", __FUNCTION__,
 			config_file);
 
-		return -EINVAL;
+		ret = -EINVAL;
+		goto cleanup;
 	}
 
 	if ((chroot_dir = config_read(config_file, "dns.bind.chroot")) == NULL) {
 		DPRINTF("%s: Missing 'dns.bind.chroot' entry in %s\n", __FUNCTION__,
 			config_file);
 
-		return -EINVAL;
+		ret = -EINVAL;
+		goto cleanup;
 	}
 
-	if (t.numTokens == 0)
-		return -EIO;
+	if ((allow_multiple_records = config_read(config_file, "dns.bind.allow_multiple_records")) == NULL) {
+		DPRINTF("%s: Missing 'dns.bind.allow_multiple_records' entry in %s\n", __FUNCTION__,
+			config_file);
+		ret = -EINVAL;
+		goto cleanup;
+	}
 
-	if (cmd_requires_authorization(t.tokens[1]) && !authorized)
-		return -EACCES;
+	if (((strcmp(allow_multiple_records, "yes") != 0) && (strcmp(allow_multiple_records, "no") != 0))
+		&& ((strcmp(allow_multiple_records, "true") != 0) && (strcmp(allow_multiple_records, "false") != 0)) ) {
+		DPRINTF("%s: Invalid value of 'dns.bind.allow_multiple_records' entry in %s. Valid values are "
+			"'yes' or 'no' (resp. 'true' or 'false')\n", __FUNCTION__, config_file);
+		ret = -EINVAL;
+		goto cleanup;
+	}
+
+	allow_multiple = ((strcmp(allow_multiple_records, "yes") == 0) || (strcmp(allow_multiple_records, "true") == 0));
+	free(allow_multiple_records);
+
+	if (t.numTokens == 0) {
+		ret = -EIO;
+		goto cleanup;
+	}
+
+	if (cmd_requires_authorization(t.tokens[1]) && !authorized) {
+		ret = -EACCES;
+		goto cleanup;
+	}
 
 	if (strcmp(t.tokens[1], "CREATE") == 0) {
-		if (t.numTokens < 4)
-			return -EINVAL;
+		if (t.numTokens < 4) {
+			ret = -EINVAL;
+			goto cleanup;
+		}
 
 		if (strcmp(t.tokens[2], "ZONE") == 0) {
 			char path[BUFSIZE];
@@ -182,7 +213,8 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 			FILE *fp = fopen(path, "r");
 			if (fp == NULL) {
 				DPRINTF("%s: Cannot open '%s' for reading\n", __FUNCTION__, path);
-				return -EIO;
+				ret = -EIO;
+				goto cleanup;
 			}
 			
 			snprintf(b, sizeof(b), "zone \"%s\" IN {\n", t.tokens[3]);
@@ -199,13 +231,15 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 			
 			if (exists) {
 				DPRINTF("%s: Zone %s already exists\n", __FUNCTION__, t.tokens[3]);
-				return -EEXIST;
+				ret = -EEXIST;
+				goto cleanup;
 			}
 
 			fp = fopen(path, "a");
 			if (fp == NULL) {
 				DPRINTF("%s: Cannot access '%s'\n", __FUNCTION__, path);
-				return -EIO;
+				ret = -EIO;
+				goto cleanup;
 			}
 
 			fprintf(fp, "zone \"%s\" IN {\n\ttype master;\n\tfile \"%s.db\";\n\tallow-update { any; };\n};\n",
@@ -215,7 +249,8 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 			if (chown(path, users_user_id(user), users_group_id(group)) != 0) {
 				DPRINTF("%s: Cannot alter permissions on '%s' (%d, %d)\n", __FUNCTION__, path,
 						users_user_id(user), users_group_id(group));
-				return -EPERM;
+				ret = -EPERM;
+				goto cleanup;
 			}
 
 			snprintf(path, sizeof(path), "%s/var/named/%s.db", chroot_dir, t.tokens[3]);
@@ -223,7 +258,8 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 			fp = fopen(path, "w");
 			if (fp == NULL) {
 				DPRINTF("%s: Cannot access '%s'\n", __FUNCTION__, path);
-				return -EIO;
+				ret = -EIO;
+				goto cleanup;
 			}
 			fprintf(fp, "$TTL 86400\n$ORIGIN %s.\n@ IN SOA %s. %s. %d%d 10800 3600 604800 3600\n"
 					"@ IN NS      %s.\n", t.tokens[3], ns1, ns1, time(NULL), rand() % 100, ns1);
@@ -232,7 +268,8 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 			if (chown(path, users_user_id(user), users_group_id(group)) != 0) {
 				DPRINTF("%s: Cannot alter permissions on '%s' (%d, %d)\n", __FUNCTION__, path,
 						users_user_id(user), users_group_id(group));
-				return -EPERM;
+				ret = -EPERM;
+				goto cleanup;
 			}
 		}
 		else
@@ -253,7 +290,8 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 				&& (strcmp(type, "TXT") != 0) && (strcmp(type, "SRV") != 0)) {
 				DPRINTF("%s: Invalid DNS record type (%s)\n", __FUNCTION__, type);
 				free(type);
-				return -EINVAL;
+				ret = -EINVAL;
+				goto cleanup;
 			}
 
 			for (i = 4; i < t.numTokens-1; i++) {
@@ -271,7 +309,8 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 			if (domain == NULL) {
 				DPRINTF("%s: Domain is not specified\n", __FUNCTION__);
 				free(type);
-				return -EINVAL;
+				ret = -EINVAL;
+				goto cleanup;
 			}
 
 			strncpy(name, domain, sizeof(name));
@@ -287,14 +326,16 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 			if (access(path, R_OK) != 0) {
 				DPRINTF("%s: Cannot access domain zone file '%s'\n", __FUNCTION__, path);
 				free(type);
-				return -EINVAL;
+				ret = -EINVAL;
+				goto cleanup;
 			}
 
 			fp = fopen(path, "r");
 			if (fp == NULL) {
 				DPRINTF("%s: Cannot open domain zone file '%s' for reading\n", __FUNCTION__, path);
 				free(type);
-				return -EINVAL;
+				ret = -EINVAL;
+				goto cleanup;
 			}
 
 			strcpy(name2, name);
@@ -308,17 +349,20 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 			}
 			fclose(fp);
 
-			if (exists) {
-				DPRINTF("%s: Cannot create entry. Entry already exists\n", __FUNCTION__);
+			if (exists && !allow_multiple) {
+				DPRINTF("%s: Cannot create entry. Entry already exists and allow_multiple is not set\n",
+					__FUNCTION__);
 				free(type);
-				return -EEXIST;
+				ret = -EEXIST;
+				goto cleanup;
 			}
 
 			fp = fopen(path, "a");
 			if (fp == NULL) {
 				DPRINTF("%s: Cannot open domain zone file '%s' for writing\n", __FUNCTION__, path);
 				free(type);
-				return -EINVAL;
+				ret = -EINVAL;
+				goto cleanup;
 			}
 			fprintf(fp, "%s IN %s %s\n", name, type, data);
 			fclose(fp);
@@ -326,13 +370,17 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 			DPRINTF("%s: %s record %s.%s created and saved into %s\n", __FUNCTION__, type, name, domain, path);
 			free(type);
 		}
-		else
-			return -ENOTSUP;
+		else {
+			ret = -ENOTSUP;
+			goto cleanup;
+		}
 	}
 	else
 	if (strcmp(t.tokens[1], "DELETE") == 0) {
-		if (t.numTokens < 4)
-			return -EINVAL;
+		if (t.numTokens < 4) {
+			ret = -EINVAL;
+			goto cleanup;
+		}
 
 		if (strcmp(t.tokens[2], "ZONE") == 0) {
 			char path[BUFSIZE];
@@ -346,7 +394,8 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 			FILE *fp = fopen(path, "r");
 			if (fp == NULL) {
 				DPRINTF("%s: Cannot open '%s' for reading\n", __FUNCTION__, path);
-				return -EIO;
+				ret = -EIO;
+				goto cleanup;
 			}
 			
 			strcpy(tmp, "/tmp/srvmgr-bind.XXXXXX");
@@ -355,7 +404,8 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 			FILE *fp2 = fopen(tmp, "w");
 			if (fp2 == NULL) {
 				DPRINTF("%s: Cannot open '%s' for writing\n", __FUNCTION__, tmp);
-				return -EIO;
+				ret = -EIO;
+				goto cleanup;
 			}
 
 			snprintf(b, sizeof(b), "zone \"%s\" IN {\n", t.tokens[3]);
@@ -380,7 +430,8 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 			
 			if (!deleted) {
 				DPRINTF("%s: Zone %s not found\n", __FUNCTION__, t.tokens[3]);
-				return -ENOENT;
+				ret = -ENOENT;
+				goto cleanup;
 			}
 
 			snprintf(b, sizeof(b), "mv %s %s", tmp, path);
@@ -391,7 +442,8 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 			if (chown(path, users_user_id(user), users_group_id(group)) != 0) {
 				DPRINTF("%s: Cannot alter permissions on '%s' (%d, %d)\n", __FUNCTION__, path,
 						users_user_id(user), users_group_id(group));
-				return -EPERM;
+				ret = -EPERM;
+				goto cleanup;
 			}
 
 			snprintf(path, sizeof(path), "%s/var/named/%s.db", chroot_dir, t.tokens[3]);
@@ -401,6 +453,7 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 		if (strcmp(t.tokens[2], "RECORD") == 0) {
 			int i;
 			char *domain = strdup( t.tokens[3] );
+			char value[1024] = { 0 };
 			char path[BUFSIZE];
 			char line[1024] = { 0 };
 			char tmp[256] = { 0 };
@@ -412,7 +465,8 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 
 			if (domain == NULL) {
 				DPRINTF("%s: Domain is not specified\n", __FUNCTION__);
-				return -EINVAL;
+				ret = -EINVAL;
+				goto cleanup;
 			}
 
 			strncpy(name, domain, sizeof(name));
@@ -422,6 +476,9 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 
 			name[i] = 0;
 
+			if (t.numTokens > 4)
+				snprintf(value, sizeof(value), "%s\n", strdup(t.tokens[4]));
+
 			domain += strlen(name) + 1;
 
 			strcpy(tmp, "/tmp/srvmgr-bind.XXXXXX");
@@ -430,19 +487,22 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 			snprintf(path, sizeof(path), "%s/var/named/%s.db", chroot_dir, domain);
 			if (access(path, R_OK) != 0) {
 				DPRINTF("%s: Cannot access domain zone file '%s'\n", __FUNCTION__, path);
-				return -EINVAL;
+				ret = -EINVAL;
+				goto cleanup;
 			}
 
 			fp = fopen(path, "r");
 			if (fp == NULL) {
 				DPRINTF("%s: Cannot open domain zone file '%s' for reading\n", __FUNCTION__, path);
-				return -EINVAL;
+				ret = -EINVAL;
+				goto cleanup;
 			}
 
 			fp2 = fopen(tmp, "w");
 			if (fp == NULL) {
 				DPRINTF("%s: Cannot open domain zone file '%s' for writing\n", __FUNCTION__, path);
-				return -EINVAL;
+				ret = -EINVAL;
+				goto cleanup;
 			}
 
 			strcpy(name2, name);
@@ -453,8 +513,19 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 				fgets(line, sizeof(line), fp);
 				if (strncmp(line, name2, strlen(name2)) != 0)
 					fputs(line, fp2);
-				else
-					deleted = 1;
+				else {
+					if (strlen(value) == 0) {
+						deleted = 1;
+						continue;
+					}
+					else
+					if (strstr(line, value) != NULL) {
+						deleted = 1;
+						continue;
+					}
+					else
+						fputs(line, fp2);
+				}
 			}
 			fclose(fp2);
 			fclose(fp);
@@ -462,7 +533,8 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 			if (!deleted) {
 				DPRINTF("%s: Entry %s.%s doesn't exist\n", __FUNCTION__, name, domain);
 				unlink(tmp);
-				return -ENOENT;
+				ret = -ENOENT;
+				goto cleanup;
 			}
 
 			DPRINTF("%s: %s.%s deleted from %s\n", __FUNCTION__, name, domain, path);
@@ -475,16 +547,22 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 			if (chown(path, users_user_id(user), users_group_id(group)) != 0) {
 				DPRINTF("%s: Cannot alter permissions on '%s' (%d, %d)\n", __FUNCTION__, path,
 						users_user_id(user), users_group_id(group));
-				return -EPERM;
+				ret = -EPERM;
 			}
 		}
 		else
-			return -ENOTSUP;
+			ret = -ENOTSUP;
 	}
 	else
-		return -ENOTSUP;
+		ret = -ENOTSUP;
 
-	return 0;
+cleanup:
+	free(ns1);
+	free(user);
+	free(group);
+	free(chroot_dir);
+
+	return ret;
 }
 
 void free_tokens(tTokenizer t)
