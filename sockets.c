@@ -60,7 +60,11 @@ int socket_check_auth(char *token)
 int process_with_module(char *base_path, char *data, int authorized)
 {
 	/* Hack for builtin commands */
+	if (strcmp(data, "TEST") == 0)
+		return 0;
+
 	if (strncmp(data, "BUILTIN", 7) == 0) {
+		int ret = 0;
 		tTokenizer t;
 
 		t = tokenize(data);
@@ -80,18 +84,18 @@ int process_with_module(char *base_path, char *data, int authorized)
 				home = (t.numTokens > 7) ? t.tokens[7] : NULL;
 				shell = (t.numTokens > 8) ? t.tokens[8] : NULL;
 
-				return users_add(name, password, groupName, description, home, shell);
+				ret = users_add(name, password, groupName, description, home, shell);
 			}
 			else
-				return -ENOTSUP;
+				ret = -ENOTSUP;
 		}
 		else
 		if (strcmp(t.tokens[1], "GROUP") == 0) {
 			if (strcmp(t.tokens[2], "ADD") == 0) {
-				return users_group_add( (t.numTokens > 3) ? t.tokens[3] : NULL );
+				ret = users_group_add( (t.numTokens > 3) ? t.tokens[3] : NULL );
 			}
 			else
-				return -ENOTSUP;
+				ret = -ENOTSUP;
 		}
 		else
 		if (strcmp(t.tokens[1], "FIREWALL") == 0) {
@@ -111,7 +115,7 @@ int process_with_module(char *base_path, char *data, int authorized)
 				if (strcmp(t.tokens[5], "ACCEPT") == 0)
 					type = IPT_TYPE_ACCEPT;
 
-				return firewall_rule_insert( port, proto, type );
+				ret = firewall_rule_insert( port, proto, type );
 			}
 			else
 			if (strcmp(t.tokens[2], "DELETE") == 0) {
@@ -130,10 +134,12 @@ int process_with_module(char *base_path, char *data, int authorized)
 				if (strcmp(t.tokens[5], "ACCEPT") == 0)
 					type = IPT_TYPE_ACCEPT;
 
-				return firewall_rule_delete( port, proto, type );
+				ret = firewall_rule_delete( port, proto, type );
 			}
 		}
 		free_tokens(t);
+
+		return ret;
 	}
 	else
 		return module_process_all(base_path, data, authorized);

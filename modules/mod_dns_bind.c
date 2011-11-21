@@ -236,7 +236,8 @@ read_zone_file:
 		memset(line, 0, sizeof(line));
 
 		fgets(line, sizeof(line), fp);
-		if ((strstr(line, " IN ") != NULL) && (strstr(line, "SOA") == NULL))
+		if ((strstr(line, " IN ") != NULL) && (strstr(line, "SOA") == NULL)
+			&& (strstr(line, "NS") == NULL))
 			fputs(line, fo);
 	}
 	fclose(fp);
