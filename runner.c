@@ -57,6 +57,8 @@ int main(int argc, char *argv[])
 {
 	int ret;
 	char modPath[BUFSIZE];
+	char *arg0 = strdup(argv[0]);
+	char *dir = dirname(arg0);
 
 	atexit(exitFunc);
 	modules_init();
@@ -70,15 +72,15 @@ int main(int argc, char *argv[])
 	//return 0;
 
 	if (argc == 1) {
-		snprintf(modPath, sizeof(modPath), "%s/modules", dirname(argv[0]));
-		if ((ret = modules_load_all(dirname(argv[0]), modPath)) != 0) {
+		snprintf(modPath, sizeof(modPath), "%s/modules", dir);
+		if ((ret = modules_load_all(dir, modPath)) != 0) {
 			if (ret < 0) {
 				DPRINTF("%s: Cannot load modules\n", __FUNCTION__);
 				return 1;
 			}
 			char config_file[BUFSIZE];
 
-			snprintf(config_file, sizeof(config_file), "%s/manager.conf", dirname(argv[0]));
+			snprintf(config_file, sizeof(config_file), "%s/manager.conf", dir);
 			if (access(config_file, R_OK) == 0) {
 				char *val = config_read(config_file, "module.duplicate_handling");
 				if (val != NULL) {
@@ -107,7 +109,7 @@ int main(int argc, char *argv[])
 
 		firewall_init();
 
-		DPRINTF("Bind result: %d\n", socket_bind(dirname(argv[0]), SOCKET_PATH));
+		DPRINTF("Bind result: %d\n", socket_bind(dir, SOCKET_PATH));
 	}
 	else
 		if (argc == 2) {

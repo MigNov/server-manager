@@ -15,14 +15,15 @@ int module_install(char *base_path, char *libname)
 	void *lib = NULL;
 	char *val = NULL;
 	void *pInstall = NULL;
+	char *tmpnam = strdup(libname);
 	typedef char* (*tInstallFunc) (char*);
 
 	snprintf(path, sizeof(path), "%s/var", base_path);
 	mkdir(path, 0755);
 
-	snprintf(path, sizeof(path), "%s/var/%s-install-lock", base_path, basename(libname));
+	snprintf(path, sizeof(path), "%s/var/%s-install-lock", base_path, basename(tmpnam));
 	if (access(path, R_OK) == 0) {
-		DPRINTF("%s: Module %s already installed\n", __FUNCTION__, basename(libname));
+		DPRINTF("%s: Module %s already installed\n", __FUNCTION__, basename(tmpnam));
 		return 0;
 	}
 
@@ -44,7 +45,7 @@ int module_install(char *base_path, char *libname)
 
 	val = fInstall(base_path);
 	if ((val != NULL) && (strcmp(val, "ERR") == 0)) {
-		fprintf(stderr, "Warning: Cannot install module %s\n", basename(libname));
+		fprintf(stderr, "Warning: Cannot install module %s\n", basename(tmpnam));
 		ret = -EIO;
 	}
 	else {
@@ -71,7 +72,7 @@ int module_install(char *base_path, char *libname)
 cleanup:
 	dlclose(lib);
 	if (ret == 0)
-		DPRINTF("%s: Module %s successfully installed\n", __FUNCTION__, basename(libname));
+		DPRINTF("%s: Module %s successfully installed\n", __FUNCTION__, basename(tmpnam));
 	return ret;
 }
 
@@ -84,13 +85,14 @@ int module_load(char *base_path, char *libname)
 	void *pKeyword = NULL;
 	void *pGetPort = NULL;
 	void *pIsApplicable = NULL;
+	char *tmpnam = strdup(libname);
 	typedef char* (*tIdentFunc) (void);
 	typedef char* (*tKeywordFunc) (void);
 	typedef char* (*tInstallFunc) (void);
 	typedef int   (*tIsApplicableFunc) (char*);
 
 	if (module_install(base_path, libname) != 0) {
-		DPRINTF("Error: Module %s installation failed\n", basename(libname));
+		DPRINTF("Error: Module %s installation failed\n", basename(tmpnam));
 		return -EINVAL;
 	}
 

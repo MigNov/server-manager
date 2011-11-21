@@ -150,9 +150,11 @@ int socket_bind(char *base_path, char *path)
 	struct sockaddr_un addr;
 	int sock;
 	fd_set rfds, wfds;
+	char *tmp_base_path = strdup(base_path);
+	char *tmp_path = strdup(path);
 
-	DPRINTF("%s: Base path is set to '%s'\n", __FUNCTION__, base_path);
-	DPRINTF("%s: Binding to '%s'\n", __FUNCTION__, path);
+	DPRINTF("%s: Base path is set to '%s'\n", __FUNCTION__, tmp_base_path);
+	DPRINTF("%s: Binding to '%s'\n", __FUNCTION__, tmp_path);
 	unlink(path);
 
 	sock = socket(PF_UNIX, SOCK_STREAM, 0);

@@ -20,6 +20,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/select.h>
+#include <libgen.h>
 
 #define	BUFSIZE		8192
 
@@ -45,7 +46,7 @@ int parentPid;
 
 char* config_read(const char *filename, char *key);
 
-#define SOCKET_PATH "/home/mig/Work/Interest/myPackages/server-manager/tmp/server-socket"
+#define SOCKET_PATH "/var/run/srvmgr-socket"
 #define BANNER "Welcome to the Server Administration system!"
 #define ADMINPWD "test" // IMPLEMENT BETTER ENCRYPTED FROM DATABASE
 
