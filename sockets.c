@@ -82,11 +82,55 @@ int process_with_module(char *base_path, char *data, int authorized)
 
 				return users_add(name, password, groupName, description, home, shell);
 			}
+			else
+				return -ENOTSUP;
 		}
 		else
 		if (strcmp(t.tokens[1], "GROUP") == 0) {
 			if (strcmp(t.tokens[2], "ADD") == 0) {
 				return users_group_add( (t.numTokens > 3) ? t.tokens[3] : NULL );
+			}
+			else
+				return -ENOTSUP;
+		}
+		else
+		if (strcmp(t.tokens[1], "FIREWALL") == 0) {
+			if (strcmp(t.tokens[2], "INSERT") == 0) {
+				int port, proto, type = IPT_TYPE_REJECT;
+
+				port = atoi(t.tokens[3]);
+				if (strcmp(t.tokens[4], "TCP") == 0)
+					proto = IPT_PROTO_TCP;
+				else
+				if (strcmp(t.tokens[4], "UDP") == 0)
+					proto = IPT_PROTO_UDP;
+				else
+				if (strcmp(t.tokens[4], "BOTH") == 0)
+					proto = IPT_PROTO_TCP | IPT_PROTO_UDP;
+
+				if (strcmp(t.tokens[5], "ACCEPT") == 0)
+					type = IPT_TYPE_ACCEPT;
+
+				return firewall_rule_insert( port, proto, type );
+			}
+			else
+			if (strcmp(t.tokens[2], "DELETE") == 0) {
+				int port, proto, type = IPT_TYPE_REJECT;
+
+				port = atoi(t.tokens[3]);
+				if (strcmp(t.tokens[4], "TCP") == 0)
+					proto = IPT_PROTO_TCP;
+				else
+				if (strcmp(t.tokens[4], "UDP") == 0)
+					proto = IPT_PROTO_UDP;
+				else
+				if (strcmp(t.tokens[4], "BOTH") == 0)
+					proto = IPT_PROTO_TCP | IPT_PROTO_UDP;
+
+				if (strcmp(t.tokens[5], "ACCEPT") == 0)
+					type = IPT_TYPE_ACCEPT;
+
+				return firewall_rule_delete( port, proto, type );
 			}
 		}
 		free_tokens(t);

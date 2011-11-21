@@ -118,3 +118,33 @@ Syntax: DNS-BIND DELETE RECORD record.domain.tld
 
 Purpose: Deletes the previously created $record for zone domain.tld.
 
+5) Domain zones dump
+
+Syntax: DNS-BIND DUMP ZONES $output_filename
+
+Purpose: Dumps all the zones available on the node and saves them into $output_filename.
+
+6) Domain zone records dump
+
+Syntax: DNS-BIND DUMP RECORDS $zone $output_filename
+
+Purpose: Dumps all the zone records for $zone and saves them into $output_filename.
+
+BUILTIN COMMANDS
+----------------
+
+1) Enabling port rule on machine using IPTABLES
+
+Syntax: BUILTIN FIREWALL INSERT $port (TCP|UDP|BOTH) (ACCEPT|REJECT)
+
+2) Disabling port rule on machine using IPTABLES
+
+Syntax: BUILTIN FIREWALL DELETE $port (TCP|UDP|BOTH) (ACCEPT|REJECT)
+
+3) Adding user
+
+Syntax: BUILTIN USER ADD $name $password $groupName $description $home $shell
+
+4) Adding group
+
+Syntax: BUILTIN GROUP ADD $name
