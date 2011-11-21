@@ -137,6 +137,144 @@ uid_t users_user_id(char *name)
 	return pw->pw_uid;
 }
 
+int dump_zones(char *chroot_dir, char *filename)
+{
+	char path[BUFSIZE];
+	char line[BUFSIZE];
+	char *b = NULL;
+	FILE *fp = NULL;
+	FILE *fo = NULL;
+	int i;
+
+	snprintf(path, sizeof(path), "%s/etc/%s", chroot_dir, MODULE_MASTER_ZONETABLE);
+
+	fp = fopen(path, "r");
+	if (fp == NULL) {
+		DPRINTF("%s: Cannot open '%s' for reading\n", __FUNCTION__, path);
+		return -EPERM;
+	}
+
+	fo = fopen(filename, "w");
+	if (fo == NULL) {
+		fclose(fp);
+		DPRINTF("%s: Cannot open '%s' for writing\n", __FUNCTION__, filename);
+		return -EPERM;
+	}
+
+	while (!feof(fp)) {
+		memset(line, 0, sizeof(line));
+
+		fgets(line, sizeof(line), fp);
+		if (strstr(line, "zone \"") != NULL) {
+			b = strchr(line, '"');
+			if (b != NULL) {
+				b++;
+
+				for (i = 0; i < strlen(b); i++)
+					if (b[i] == '"')
+						break;
+				b[i] = 0;
+
+				fprintf(fo, "%s\n", b);
+			}
+		}
+	}
+
+	fclose(fo);
+	fclose(fp);
+	return 0;
+}
+
+int dump_zone_records(char *chroot_dir, char *zone, char *filename)
+{
+	char path[BUFSIZE];
+	char line[BUFSIZE];
+	char *b = NULL;
+	FILE *fp = NULL;
+	FILE *fo = NULL;
+	char *fn = NULL;
+	int i, read_all = 0;
+
+	snprintf(path, sizeof(path), "%s/etc/%s", chroot_dir, MODULE_MASTER_ZONETABLE);
+
+	fp = fopen(path, "r");
+	if (fp == NULL) {
+		DPRINTF("%s: Cannot open '%s' for reading\n", __FUNCTION__, path);
+		return -EPERM;
+	}
+
+	fo = fopen(filename, "w");
+	if (fo == NULL) {
+		fclose(fp);
+		DPRINTF("%s: Cannot open '%s' for writing\n", __FUNCTION__, filename);
+		return -EPERM;
+	}
+
+	while (!feof(fp)) {
+		memset(line, 0, sizeof(line));
+
+		fgets(line, sizeof(line), fp);
+		if ((strstr(line, "zone \"") != NULL) || (read_all)) {
+			if (read_all) {
+				if (strstr(line, "file ") != NULL) {
+					tTokenizer t;
+					
+					t = tokenize(line);
+					fn = strdup(t.tokens[1]) + 1;
+					
+					for (i = 0; i < strlen(fn); i++)
+						if (fn[i] == '"')
+							break;
+					fn[i] = 0;
+					
+					free_tokens(t);
+					goto read_zone_file;
+				}
+				else
+				if (strcmp(line, "};") == 0)
+					read_all = 0;
+			}
+			else {
+				b = strchr(line, '"');
+				if (b != NULL) {
+					b++;
+
+					for (i = 0; i < strlen(b); i++)
+						if (b[i] == '"')
+							break;
+					b[i] = 0;
+				
+					if (strcmp(b, zone) == 0)
+						read_all = 1;
+				}
+			}
+		}
+	}
+	
+read_zone_file:
+	fclose(fp);
+
+	if (fn == NULL)
+		return -ENOENT;
+		
+	snprintf(path, sizeof(path), "%s/var/named/%s", chroot_dir, fn);
+	
+	fp = fopen(path, "r");
+	if (fp == NULL)
+		return -EPERM;
+	while (!feof(fp)) {
+		memset(line, 0, sizeof(line));
+
+		fgets(line, sizeof(line), fp);
+		if ((strstr(line, " IN ") != NULL) && (strstr(line, "SOA") == NULL))
+			fputs(line, fo);
+	}
+	fclose(fp);
+	
+	fclose(fo);
+	return 0;
+}
+
 int process_commands(char *config_file, int authorized, tTokenizer t)
 {
 	int  ret = 0;
@@ -207,6 +345,19 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 		goto cleanup;
 	}
 
+	if (strcmp(t.tokens[1], "DUMP") == 0) {
+		if (t.numTokens < 4) {
+			ret = -EINVAL;
+			goto cleanup;
+		}
+
+		if (strcmp(t.tokens[2], "ZONES") == 0)
+			dump_zones(chroot_dir, t.tokens[3]);
+		else
+		if (strcmp(t.tokens[2], "RECORDS") == 0)
+			dump_zone_records(chroot_dir, t.tokens[3], t.tokens[4]);
+	}
+	else
 	if (strcmp(t.tokens[1], "DAEMON") == 0) {
 		if (t.numTokens < 2) {
 			ret = -EINVAL;
