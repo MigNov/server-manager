@@ -14,11 +14,6 @@ do { printf("mod_dns_bind: " fmt , ##args); } while (0)
 #define DPRINTF(fmt, args...) do {} while(0)
 #endif
 
-typedef struct tTokenizer {
-	char **tokens;
-	int numTokens;
-} tTokenizer;
-
 char *srvmgr_module_identification(void)
 {
 	return MODULE_IDENTIFICATION;
@@ -71,31 +66,6 @@ char* config_read(const char *filename, char *key)
 	fclose(fp);
 
 	return NULL;
-}
-
-tTokenizer tokenize(char *string)
-{
-	char *tmp;
-	char *str;
-	char *save;
-	char *token;
-	int i = 0;
-	tTokenizer t;
-
-	tmp = strdup(string);
-	t.tokens = malloc( sizeof(char *) );
-	for (str = tmp; ; str = NULL) {
-		token = strtok_r(str, " ", &save);
-		if (token == NULL)
-			break;
-
-		t.tokens = realloc( t.tokens, (i + 1) * sizeof(char *) );
-		t.tokens[i++] = strdup(token);
-	}
-
-	t.numTokens = i;
-
-	return t;
 }
 
 int bind_enable(int enable)
@@ -770,16 +740,6 @@ cleanup:
 	free(chroot_dir);
 
 	return ret;
-}
-
-void free_tokens(tTokenizer t)
-{
-	int i;
-
-	for (i = 0; i < t.numTokens; i++) {
-		free(t.tokens[i]);
-		t.tokens[i] = NULL;
-	}
 }
 
 int srvmgr_module_is_applicable(char *base_path)

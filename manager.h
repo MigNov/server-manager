@@ -23,6 +23,14 @@
 
 #define	BUFSIZE		8192
 
+typedef struct tTokenizer {
+	char **tokens;
+	int numTokens;
+} tTokenizer;
+
+tTokenizer tokenize(char *string);
+void free_tokens(tTokenizer t);
+
 typedef struct tModule {
         char *ident;
 	char *keyword;

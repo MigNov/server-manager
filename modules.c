@@ -64,7 +64,6 @@ int module_install(char *base_path, char *libname)
 			if (ret == 0) {
 				/* Touches the module lock file */
 				close( open(path, O_WRONLY | O_CREAT, 0600) );
-				ret = 0;
 			}
 		}
 	}

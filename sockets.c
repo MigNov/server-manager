@@ -9,6 +9,41 @@ do { printf("sockets: " fmt , ##args); } while (0)
 #define DPRINTF(fmt, args...) do {} while(0)
 #endif
 
+tTokenizer tokenize(char *string)
+{
+	char *tmp;
+	char *str;
+	char *save;
+	char *token;
+	int i = 0;
+	tTokenizer t;
+
+	tmp = strdup(string);
+	t.tokens = malloc( sizeof(char *) );
+	for (str = tmp; ; str = NULL) {
+		token = strtok_r(str, " ", &save);
+		if (token == NULL)
+			break;
+
+		t.tokens = realloc( t.tokens, (i + 1) * sizeof(char *) );
+		t.tokens[i++] = strdup(token);
+	}
+
+	t.numTokens = i;
+
+	return t;
+}
+
+void free_tokens(tTokenizer t)
+{
+	int i;
+
+	for (i = 0; i < t.numTokens; i++) {
+		free(t.tokens[i]);
+		t.tokens[i] = NULL;
+	}
+}
+
 int socket_check_auth(char *token)
 {
 	int i;
@@ -24,7 +59,40 @@ int socket_check_auth(char *token)
 
 int process_with_module(char *base_path, char *data, int authorized)
 {
-	return module_process_all(base_path, data, authorized);
+	/* Hack for builtin commands */
+	if (strncmp(data, "BUILTIN", 7) == 0) {
+		tTokenizer t;
+
+		t = tokenize(data);
+		if (t.numTokens < 3) {
+			free_tokens(t);
+			return -EINVAL;
+		}
+
+		if (strcmp(t.tokens[1], "USER") == 0) {
+			if ((t.tokens[2], "ADD") == 0) {
+				char *name, *password, *groupName, *description, *home, *shell;
+
+				name = (t.numTokens > 3) ? t.tokens[3] : NULL;
+				password = (t.numTokens > 4) ? t.tokens[4] : NULL;
+				groupName = (t.numTokens > 5) ? t.tokens[5] : NULL;
+				description = (t.numTokens > 6) ? t.tokens[6] : NULL;
+				home = (t.numTokens > 7) ? t.tokens[7] : NULL;
+				shell = (t.numTokens > 8) ? t.tokens[8] : NULL;
+
+				return users_add(name, password, groupName, description, home, shell);
+			}
+		}
+		else
+		if (strcmp(t.tokens[1], "GROUP") == 0) {
+			if (strcmp(t.tokens[2], "ADD") == 0) {
+				return users_group_add( (t.numTokens > 3) ? t.tokens[3] : NULL );
+			}
+		}
+		free_tokens(t);
+	}
+	else
+		return module_process_all(base_path, data, authorized);
 }
 
 int socket_bind(char *base_path, char *path)
