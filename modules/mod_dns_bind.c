@@ -1,7 +1,7 @@
 #define MODULE_IDENTIFICATION	"DNS BIND Module"
 #define MODULE_KEYWORD		"DNS-BIND"
 #define MODULE_PORT		PORT_BOTH(53)
-#define MODULE_SERVICE		"service named"
+#define MODULE_SERVICE		"named"
 #define MODULE_MASTER_ZONETABLE	"named.rfc1912.zones"
 #define DEBUG_MOD_DNS
 
@@ -34,7 +34,7 @@ char *srvmgr_module_install(void)
 	int ret;
 	char cmd[64];
 
-	snprintf(cmd, sizeof(cmd), "%s status 2> /dev/null > /dev/null", MODULE_SERVICE);
+	snprintf(cmd, sizeof(cmd), "service %s status 2> /dev/null > /dev/null", MODULE_SERVICE);
 	ret = WEXITSTATUS(system(cmd));
 	DPRINTF("%s: Command '%s' returned %d\n", __FUNCTION__, cmd, ret);
 	if (ret == 1)
@@ -60,6 +60,7 @@ char* config_read(const char *filename, char *key)
 			if (tmp[strlen(tmp) - 1] == '\n')
 				tmp[strlen(tmp) - 1] = 0;
 
+			DPRINTF("%s: %s => %s\n", __FUNCTION__, key, tmp);
 			return tmp;
 		}
 	}
@@ -73,8 +74,24 @@ int bind_enable(int enable)
 	int ret;
 	char cmd[256];
 
-	snprintf(cmd, sizeof(cmd), "%s %s > /dev/null &2> /dev/null", MODULE_SERVICE, enable ? "start" : "stop");
+	snprintf(cmd, sizeof(cmd), "service %s %s > /dev/null &2> /dev/null", MODULE_SERVICE, enable ? "start" : "stop");
 	ret = WEXITSTATUS( system(cmd) );
+
+	if (enable == 0) {
+		int pid;
+
+		pid = get_process_pid_from_ps(MODULE_SERVICE);
+		DPRINTF("%s: Pid is %d\n", __FUNCTION__, pid);
+		if (pid > 0)
+			kill(pid, SIGKILL);
+	}
+	else {
+		if (get_process_pid_from_ps(MODULE_SERVICE) < 0) {
+			DPRINTF("%s: Cannot start up module\n", __FUNCTION__);
+			return -EIO;
+		}
+	}
+
 	DPRINTF("%s: Command '%s' returned with error code %d\n", __FUNCTION__, cmd, ret);
 	return ret;
 }
@@ -166,6 +183,7 @@ int dump_zone_records(char *chroot_dir, char *zone, char *filename)
 	int i, read_all = 0;
 
 	snprintf(path, sizeof(path), "%s/etc/%s", chroot_dir, MODULE_MASTER_ZONETABLE);
+	DPRINTF("%s: Dumping data from path %s\n", path);
 
 	fp = fopen(path, "r");
 	if (fp == NULL) {
@@ -465,7 +483,8 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 
 			if ((strcmp(type, "A") != 0) && (strcmp(type, "NS") != 0)
 				&& (strcmp(type, "CNAME") != 0) && (strcmp(type, "AAAA") != 0)
-				&& (strcmp(type, "TXT") != 0) && (strcmp(type, "SRV") != 0)) {
+				&& (strcmp(type, "TXT") != 0) && (strcmp(type, "SRV") != 0)
+				&& (strncmp(type, "MX", 2) != 0)) {
 				DPRINTF("%s: Invalid DNS record type (%s)\n", __FUNCTION__, type);
 				free(type);
 				ret = -EINVAL;
@@ -534,6 +553,9 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 				ret = -EEXIST;
 				goto cleanup;
 			}
+
+			if (strncmp(type, "MX", 2) == 0)
+				type[2] = ' ';
 
 			fp = fopen(path, "a");
 			if (fp == NULL) {
@@ -750,7 +772,7 @@ int srvmgr_module_is_applicable(char *base_path)
 	char *tmp = NULL;
 	char config_file[BUFSIZE];
 
-        snprintf(cmd, sizeof(cmd), "%s status 2> /dev/null >/dev/null", MODULE_SERVICE);
+        snprintf(cmd, sizeof(cmd), "service %s status 2> /dev/null >/dev/null", MODULE_SERVICE);
 	if (WEXITSTATUS(system(cmd)) == 1) {
 		DPRINTF("%s: Cannot access required service\n", __FUNCTION__);
 		ret = 0;

@@ -1,4 +1,25 @@
+CRON COMMANDS
+-------------
+
+1) CREATE A CRON TABLE ENTRY
+
+Syntax: CRON ADD $username "Min Hour Day Month DOW /path/to/command"
+
+2) DELETE A CRON TABLE ENTRY
+
+Syntax: CRON DELETE $username "Min Hour Day Month DOW /path/to/command"
+Syntax: CRON REMOVE $username "Min Hour Day Month DOW /path/to/command"
+
+3) TRUNCATE CRON TABLE
+
+Syntax: CRON TRUNCATE $username
+
+4) LIST TABLE
+
+Syntax: CRON LIST $username $filename_to_store_to
+
 GIT REPOSITORY COMMANDS (SCM-GIT):
+----------------------------------
 
 1) CREATE REPO
 
@@ -52,6 +73,7 @@ Purpose: Disables the Git daemon.
 
 
 SVN REPOSITORY COMMANDS (SCM-SVN):
+----------------------------------
 
 1) CREATE REPO
 

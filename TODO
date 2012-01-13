@@ -16,6 +16,13 @@ Development plan
     - Creation of zone files and zone entries - 100% done
     - Deletion of zone files and zone entries - 100% done
     - Dump of zone files and zone records - 100% done
+  - CRON
+    - crontab
+       - Write as: "Min Hour Day Month DOW /path/to/command" per line and save as crontabFile
+       - Apply using crontab [-u user if current user == root] crontabFile
+       - List using crontab -l
+       - Remove using crontab -r
+    - Could be disabled for binaries/cgi scripts by root user (to just support PHP scripts)
   - e-mail like POP3(s)/IMAP(s) - Dovecot - and SMTP (postfix)
     - Implement virtual users creation & deletion
     - Save e-mails to safe place, alter permissions
@@ -23,15 +30,15 @@ Development plan
   - FTP(s) & SCP
     - Maybe revive the limshell project for those purposes, join with SSL layer and listen on some other port
     - Could be database connected
-  - HTTP(s) (httpd.conf) && PHP (php.ini) configuration
+  - HTTP(s) (httpd.conf + conf.d/*.conf) & PHP (php.ini) configuration
     - Allow both raw php.ini editing and configurable options in select of HTML page (for frontend)
-  - CRON for both scripts and binaries
-    - Could be disabled for binaries/cgi scripts by root user
+    - Support multiple programming languages - Perl, Python, Ruby On Rails
   - Disk quotes
   - SELinux
   - Databases
     - allow new user creation, user deletion, database creation and deletion, setting permissions per database
-    - allow remote access
+    - allow remote access (using different hostname, i.e. not localhost only)
     - mod_db_mysql
     - mod_db_pgsql
+    - Get root login information from manager.conf configuration file for administration purposes (available for root shell login only)
   - Backups

@@ -1,3 +1,4 @@
+#define MANAGER_BINARY	"manager"
 #define DEBUG_RUNNER
 
 #include "manager.h"
@@ -11,7 +12,12 @@ do { printf("runner: " fmt , ##args); } while (0)
 
 void exitFunc(void)
 {
-	if ((parentPid != getpid()) || (getuid() != 0))
+	int mbinpid;
+
+	mbinpid = get_process_pid_from_ps(MANAGER_BINARY);
+	DPRINTF("First manager binary PID: %d\n", mbinpid);
+
+	if ((mbinpid != getpid()) || (getuid() != 0))
 		return;
 
 	firewall_srvmgr_enable( 0 );
@@ -72,6 +78,18 @@ int main(int argc, char *argv[])
 	//return 0;
 
 	if (argc == 1) {
+		if (dir[0] == '.') {
+			char newdir[1024] = { 0 };
+			char outdir[4096] = { 0 };
+			getcwd(newdir, sizeof(newdir));
+			strcpy(outdir, newdir);
+			memmove(outdir + strlen(newdir), dir + 1, strlen(dir));
+
+			dir = strdup(outdir);
+		}
+
+		DPRINTF("%s: Directory is '%s'\n", __FUNCTION__, dir);
+
 		snprintf(modPath, sizeof(modPath), "%s/modules", dir);
 		if ((ret = modules_load_all(dir, modPath)) != 0) {
 			if (ret < 0) {

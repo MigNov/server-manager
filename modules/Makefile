@@ -1,7 +1,7 @@
 CC=gcc
 OUTDIR=../bindir/modules
 
-all:	modscmgit modscmsvn moddnsbind modsendmail
+all:	modscmgit modscmsvn moddnsbind modsendmail modcron
 
 modscmgit:
 	mkdir -p $(OUTDIR)
@@ -25,6 +25,12 @@ modsendmail:
 	mkdir -p $(OUTDIR)
 	$(CC) -c -fPIC mod_sendmail.c
 	$(CC) -shared -fPIC -o $(OUTDIR)/mod_sendmail.so mod_sendmail.o
+	rm -f *.o
+
+modcron:
+	mkdir -p $(OUTDIR)
+	$(CC) -c -fPIC mod_cron.c
+	$(CC) -shared -fPIC -o $(OUTDIR)/mod_cron.so mod_cron.o
 	rm -f *.o
 
 clean:

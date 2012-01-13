@@ -8,6 +8,34 @@ do { printf("modules: " fmt , ##args); } while (0)
 #define DPRINTF(fmt, args...) do {} while(0)
 #endif
 
+int file_check_executable(char *filename)
+{
+	int ret;
+
+	ret = (access(filename, X_OK) == 0);
+	DPRINTF("%s: Checking file %s for executable bit, result is %d\n", __FUNCTION__, filename, ret);
+	return ret;
+}
+
+int get_process_pid_from_ps(char *process)
+{
+	char cmd[2048] = { 0 };
+	char tmp[16] = { 0 };
+	FILE *fp = NULL;
+
+	//snprintf(cmd, sizeof(cmd), "ps aux | awk '/^%s /{ split($0, a, \" \"); print a[2] }' 2>&1", process);
+	snprintf(cmd, sizeof(cmd), "ps aux | grep %s | awk '{ split($0, a, \" \"); print a[2] }' 2>&1", process);
+	DPRINTF("%s: Command is '%s'\n", __FUNCTION__, cmd);
+	fp = popen(cmd, "r");
+	if (fp == NULL)
+		return -EINVAL;
+
+	fgets(tmp, sizeof(tmp), fp);
+	fclose(fp);
+
+	return atoi(tmp);
+}
+
 int module_install(char *base_path, char *libname)
 {
 	int ret = -EINVAL;
@@ -40,8 +68,10 @@ int module_install(char *base_path, char *libname)
 		goto cleanup;
         }
 	tInstallFunc fInstall = (tInstallFunc) pInstall;
-	if (fInstall == NULL)
+	if (fInstall == NULL) {
+		DPRINTF("%s: Cannot find installation symbol\n", __FUNCTION__);
 		goto cleanup;
+	}
 
 	val = fInstall(base_path);
 	if ((val != NULL) && (strcmp(val, "ERR") == 0)) {
@@ -49,23 +79,27 @@ int module_install(char *base_path, char *libname)
 		ret = -EIO;
 	}
 	else {
-		ret = users_add(val, val, NULL, NULL, NULL);
-		if ((ret == 0) || (ret == -EEXIST)) {
-			void *pPostInstall = NULL;
+		if (val != NULL) {
+			ret = users_add(val, val, NULL, NULL, NULL);
+			if ((ret == 0) || (ret == -EEXIST)) {
+				void *pPostInstall = NULL;
 
+				ret = 0;
+				pPostInstall = dlsym(lib, "srvmgr_module_install_post");
+				if (pPostInstall != NULL) {
+					typedef int (*tPostInstallFunc) (char*);
+					tPostInstallFunc fPostInstall = (tPostInstallFunc) pPostInstall;
+					if (fPostInstall != NULL)
+						ret = fPostInstall(base_path);
+				}
+			}
+		}
+		else
 			ret = 0;
-			pPostInstall = dlsym(lib, "srvmgr_module_install_post");
-			if (pPostInstall != NULL) {
-				typedef int (*tPostInstallFunc) (char*);
-				tPostInstallFunc fPostInstall = (tPostInstallFunc) pPostInstall;
-				if (fPostInstall != NULL)
-					ret = fPostInstall(base_path);
-			}
 
-			if (ret == 0) {
-				/* Touches the module lock file */
-				close( open(path, O_WRONLY | O_CREAT, 0600) );
-			}
+		if (ret == 0) {
+			/* Touches the module lock file */
+			close( open(path, O_WRONLY | O_CREAT, 0600) );
 		}
 	}
 
