@@ -16,13 +16,14 @@ Development plan
     - Creation of zone files and zone entries - 100% done
     - Deletion of zone files and zone entries - 100% done
     - Dump of zone files and zone records - 100% done
-  - CRON
+  - CRON - appears to be 100% done
     - crontab
-       - Write as: "Min Hour Day Month DOW /path/to/command" per line and save as crontabFile
-       - Apply using crontab [-u user if current user == root] crontabFile
-       - List using crontab -l
-       - Remove using crontab -r
-    - Could be disabled for binaries/cgi scripts by root user (to just support PHP scripts)
+       - Write as: "Min Hour Day Month DOW /path/to/command" per line and save as crontabFile - 100% done
+       - Apply using crontab [-u user if current user == root] crontabFile - 100% done
+       - List using crontab -l - 100% done
+       - Remove using crontab -r - 100% done
+    - Could be disabled for binaries/cgi scripts by root user (to just support PHP scripts) -> maybe solve in web frontend interface
+
   - e-mail like POP3(s)/IMAP(s) - Dovecot - and SMTP (postfix)
     - Implement virtual users creation & deletion
     - Save e-mails to safe place, alter permissions
@@ -32,7 +33,9 @@ Development plan
     - Could be database connected
   - HTTP(s) (httpd.conf + conf.d/*.conf) & PHP (php.ini) configuration
     - Allow both raw php.ini editing and configurable options in select of HTML page (for frontend)
-    - Support multiple programming languages - Perl, Python, Ruby On Rails
+    - Support multiple programming languages - Perl, Python, Ruby On Rails, Bash scripting
+      - Implement sanity check for those scripts and also make the path configurable per each domain (or follow pattern)
+      - Write some kind of script heurestics
   - Disk quotes
   - SELinux
   - Databases
