@@ -23,6 +23,12 @@ Development plan
        - List using crontab -l - 100% done
        - Remove using crontab -r - 100% done
     - Could be disabled for binaries/cgi scripts by root user (to just support PHP scripts) -> maybe solve in web frontend interface
+  - Databases
+    - allow new user creation, user deletion, database creation and deletion, setting permissions per database
+    - allow remote access (using different hostname, i.e. not localhost only)
+    - mod_db_mysql
+    - mod_db_pgsql
+    - Get root login information from manager.conf configuration file for administration purposes (available for root shell login only)
 
   - e-mail like POP3(s)/IMAP(s) - Dovecot - and SMTP (postfix)
     - Implement virtual users creation & deletion
@@ -38,10 +44,4 @@ Development plan
       - Write some kind of script heurestics
   - Disk quotes
   - SELinux
-  - Databases
-    - allow new user creation, user deletion, database creation and deletion, setting permissions per database
-    - allow remote access (using different hostname, i.e. not localhost only)
-    - mod_db_mysql
-    - mod_db_pgsql
-    - Get root login information from manager.conf configuration file for administration purposes (available for root shell login only)
   - Backups

@@ -1,3 +1,38 @@
+MYSQL ADMINISTRATION COMMANDS
+------------------------------
+
+First of all, you need to edit your manager.conf to provide a valid administrator
+credentials to be able to create and delete users and/or change their passwords.
+
+1) Create a MySQL user
+
+Syntax: MYSQL CREATE USER $username PASSWORD $base64_password FOR [hostname|*]
+
+Example: MYSQL CREATE USER srvmgrtest PASSWORD dGVzdA== FOR localhost
+
+         This will create the srvmgr user for localhost connection with
+         password set to 'test' (dGVzdA== is base64 form of 'test' string)
+         and then it will flush the privileges. The optional asterisk sign
+         (*) can be used for access of all hosts to this one but this applied
+         only when using TCP/IP connection since for UNIX socket connection
+         type it's not being used.
+
+2) Delete a MySQL user
+
+Syntax: MYSQL DELETE USER $username FOR [hostname|*]
+
+Example: MYSQL DELETE USER srvmgrtest FOR *
+
+         This command will delete all users named 'srvmgrtest' on the host
+         machine.
+
+3) Limit queries for user
+
+Syntax: <TBD>
+
+Example: Will call "GRANT USAGE ON *.* TO 'user'@'host' WITH MAX_QUERIES_PER_HOUR 90;" as
+         described in manual [http://dev.mysql.com/doc/refman/5.1/en/grant.html].
+
 CRON COMMANDS
 -------------
 

@@ -1,7 +1,9 @@
 CC=gcc
 OUTDIR=../bindir/modules
+MYSQL_LIBPATH=/usr/lib64/mysql
+MYSQL_LIBS=-lmysqlclient
 
-all:	modscmgit modscmsvn moddnsbind modsendmail modcron
+all:	modscmgit modscmsvn moddnsbind modsendmail modcron moddbmysql
 
 modscmgit:
 	mkdir -p $(OUTDIR)
@@ -31,6 +33,13 @@ modcron:
 	mkdir -p $(OUTDIR)
 	$(CC) -c -fPIC mod_cron.c
 	$(CC) -shared -fPIC -o $(OUTDIR)/mod_cron.so mod_cron.o
+	rm -f *.o
+
+moddbmysql:
+	mkdir -p $(OUTDIR)
+	$(CC) -c -fPIC mod_db_mysql.c
+	$(CC) -c -fPIC ../base64.c
+	$(CC) -shared -fPIC -o $(OUTDIR)/mod_db_mysql.so mod_db_mysql.o base64.o $(MYSQL_LIBS) -L$(MYSQL_LIBPATH)
 	rm -f *.o
 
 clean:

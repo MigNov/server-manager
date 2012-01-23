@@ -9,6 +9,7 @@ do { printf("config: " fmt , ##args); } while (0)
 #define DPRINTF(fmt, args...) do {} while(0)
 #endif
 
+
 char* config_read(const char *filename, char *key)
 {
 	FILE *fp;

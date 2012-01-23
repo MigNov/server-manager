@@ -32,31 +32,6 @@ char *srvmgr_module_install(void)
 	return NULL;
 }
 
-char* config_read(const char *filename, char *key)
-{
-	FILE *fp;
-	char line[BUFSIZE];
-
-	fp = fopen(filename, "r");
-	if (fp == NULL)
-		return NULL;
-
-	while (!feof(fp)) {
-		fgets(line, sizeof(line), fp);
-
-		if (strncmp(line, key, strlen(key)) == 0) {
-			char *tmp = strdup( line + strlen(key) + 3 );
-			if (tmp[strlen(tmp) - 1] == '\n')
-				tmp[strlen(tmp) - 1] = 0;
-
-			return tmp;
-		}
-	}
-	fclose(fp);
-
-	return NULL;
-}
-
 int cmd_requires_authorization(char *cmd)
 {
 	return (strcmp(cmd, "LIST") != 0);

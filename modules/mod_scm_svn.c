@@ -31,31 +31,6 @@ int srvmgr_module_get_port(void)
 	return MODULE_PORT;
 }
 
-char* config_read(const char *filename, char *key)
-{
-	FILE *fp;
-	char line[BUFSIZE];
-
-	fp = fopen(filename, "r");
-	if (fp == NULL)
-		return NULL;
-
-	while (!feof(fp)) {
-		fgets(line, sizeof(line), fp);
-
-		if (strncmp(line, key, strlen(key)) == 0) {
-			char *tmp = strdup( line + strlen(key) + 3 );
-			if (tmp[strlen(tmp) - 1] == '\n')
-				tmp[strlen(tmp) - 1] = 0;
-
-			return tmp;
-		}
-	}
-	fclose(fp);
-
-	return NULL;
-}
-
 char *srvmgr_module_install(char *base_path)
 {
 	char *val = NULL;

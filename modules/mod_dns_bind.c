@@ -43,32 +43,6 @@ char *srvmgr_module_install(void)
 	return strdup( "named" );
 }
 
-char* config_read(const char *filename, char *key)
-{
-	FILE *fp;
-	char line[BUFSIZE];
-
-	fp = fopen(filename, "r");
-	if (fp == NULL)
-		return NULL;
-
-	while (!feof(fp)) {
-		fgets(line, sizeof(line), fp);
-
-		if (strncmp(line, key, strlen(key)) == 0) {
-			char *tmp = strdup( line + strlen(key) + 3 );
-			if (tmp[strlen(tmp) - 1] == '\n')
-				tmp[strlen(tmp) - 1] = 0;
-
-			DPRINTF("%s: %s => %s\n", __FUNCTION__, key, tmp);
-			return tmp;
-		}
-	}
-	fclose(fp);
-
-	return NULL;
-}
-
 int bind_enable(int enable)
 {
 	int ret;
@@ -100,28 +74,6 @@ int cmd_requires_authorization(char *cmd)
 {
 	return ((strcmp(cmd, "DELETE") == 0) || (strcmp(cmd, "CREATE") == 0)
 		|| (strcmp(cmd, "DAEMON") == 0));
-}
-
-gid_t users_group_id(char *name)
-{
-	struct group *gr;
-
-	gr = getgrnam(name);
-	if (gr == NULL)
-		return -1;
-
-	return gr->gr_gid;
-}
-
-uid_t users_user_id(char *name)
-{
-        struct passwd *pw;
-
-	pw = getpwnam(name);
-	if (pw == NULL)
-		return -1;
-
-	return pw->pw_uid;
 }
 
 int dump_zones(char *chroot_dir, char *filename)
