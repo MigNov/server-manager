@@ -69,4 +69,6 @@ char* config_read(const char *filename, char *key);
 #define CMD_INSTALL	"/usr/bin/install"
 #define CONFIG_INETD	"/etc/inetd.conf"
 
+char *base64_decode(char *in);
+
 #endif
