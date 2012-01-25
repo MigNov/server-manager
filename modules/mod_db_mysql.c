@@ -87,6 +87,14 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 	user = config_read(config_file, "db.mysql.user");
 	pass = config_read(config_file, "db.mysql.password");
 
+	if (strncmp(pass, "read://", 7) == 0) {
+		if ((pass = process_read_handler(pass)) == NULL) {
+			DPRINTF("%s: Invalid output from the read handler\n", __FUNCTION__);
+			return -EINVAL;
+			goto cleanup;
+		}
+	}
+
 	if (!host || !user || !pass) {
 		ret = -EINVAL;
 		goto cleanup;

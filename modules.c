@@ -36,6 +36,50 @@ int get_process_pid_from_ps(char *process)
 	return atoi(tmp);
 }
 
+/*
+ * This function can process the read://filename.ext syntax to read the data.
+ * Returns the read data (simple line)
+ */
+char *process_read_handler(char *value)
+{
+	FILE *fp = NULL;
+	char *filename = NULL;
+	char data[4096] = { 0 };
+
+	if (strncmp(value, "read://", 7) != 0)
+		return NULL;
+
+	filename = value + 7;
+	if (strlen(filename) == 0)
+		return NULL;
+
+	if (filename[0] != '/') {
+		char buf[4096] = { 0 };
+
+		getcwd(buf, sizeof(buf));
+		if ((strlen(buf) + strlen(filename) + 1) < sizeof(buf)) {
+			strcat(buf, "/");
+			strcat(buf, filename);
+		}
+
+		filename = strdup(buf);
+	}
+
+	if (access(filename, R_OK) != 0)
+		return NULL;
+
+	fp = fopen(filename, "r");
+	if (fp == NULL)
+		return NULL;
+
+	fgets(data, sizeof(data), fp);
+	fclose(fp);
+
+	free(filename);
+
+	return strdup(data);
+}
+
 int module_install(char *base_path, char *libname)
 {
 	int ret = -EINVAL;

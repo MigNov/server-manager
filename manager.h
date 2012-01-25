@@ -70,5 +70,6 @@ char* config_read(const char *filename, char *key);
 #define CONFIG_INETD	"/etc/inetd.conf"
 
 char *base64_decode(char *in);
+char *process_read_handler(char *value);
 
 #endif
