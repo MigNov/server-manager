@@ -225,8 +225,8 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 
 		if (strcmp(t.tokens[2], "USER") == 0) {
 			// DELETE USER srvmgrtest FOR *
-			// AUTODROP DATABASE ??? - MAYBE PUT TO CONFIG FILE
 			char qry[4096] = { 0 };
+			char *tmp = NULL;
 			if (t.numTokens < 5) {
 				ret = -EINVAL;
 				goto cleanup;
@@ -247,6 +247,39 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 				goto cleanup;
 			}
 
+			tmp = config_read(config_file, "db.mysql.user_delete_autodrop");
+			if ((tmp != NULL) && ((strcmp(tmp, "true") == 0) || (strcmp(tmp, "yes") == 0))) {
+				MYSQL_RES *res;
+				MYSQL_ROW row;
+
+				snprintf(qry, sizeof(qry), "SELECT Db FROM db WHERE User = '%s'", t.tokens[3]);
+				if (mysql_real_query(&sql, qry, strlen(qry)) != 0) {
+					DPRINTF("%s: Error occured on selecting database list for user: %s\n", __FUNCTION__,
+						mysql_error(&sql));
+					ret = -EIO;
+					goto cleanup;
+				}
+
+				res = mysql_store_result(&sql);
+				if (mysql_num_rows(res) > 0) {
+					while (row = mysql_fetch_row(res)) {
+						DPRINTF("%s: Dropping database %s\n", __FUNCTION__, row[0]);
+						snprintf(qry, sizeof(qry), "DROP DATABASE %s", row[0]);
+						mysql_real_query(&sql, qry, strlen(qry));
+					}
+				}
+				mysql_free_result(res);
+				free(tmp);
+			}
+
+			snprintf(qry, sizeof(qry), "DELETE FROM db WHERE User = '%s'", t.tokens[3]);
+			if (mysql_real_query(&sql, qry, strlen(qry)) != 0) {
+				DPRINTF("%s: Error occured on user to database association deletion: %s\n", __FUNCTION__,
+					mysql_error(&sql));
+				ret = -EIO;
+				goto cleanup;
+			}
+
 			snprintf(qry, sizeof(qry), "FLUSH PRIVILEGES");
 			if (mysql_real_query(&sql, qry, strlen(qry)) != 0) {
 				DPRINTF("%s: Error occured on flushing privileges: %s\n", __FUNCTION__,
@@ -255,8 +288,85 @@ int process_commands(char *config_file, int authorized, tTokenizer t)
 				goto cleanup;
 			}
 		}
+		if (strcmp(t.tokens[2], "DATABASE") == 0) {
+			// DELETE DATABASE srvmgrtest
+			char qry[4096] = { 0 };
+			char *tmp = NULL;
+			if (t.numTokens < 3) {
+				ret = -EINVAL;
+				goto cleanup;
+			}
+
+			mysql_select_db(&sql, "mysql");
+
+			DPRINTF("%s: Dropping database %s\n", __FUNCTION__, t.tokens[3]);
+			snprintf(qry, sizeof(qry), "DROP DATABASE %s", t.tokens[3]);
+			if (mysql_real_query(&sql, qry, strlen(qry)) != 0) {
+				DPRINTF("%s: Error occured on user to database association deletion: %s\n", __FUNCTION__,
+					mysql_error(&sql));
+				ret = -EIO;
+				goto cleanup;
+			}
+		}
 		else
 			ret = -ENOTSUP;
+	}
+	else
+	if (strcmp(t.tokens[1], "LIMIT") == 0) {
+		// GRANT USAGE ON *.* TO 'user'@'host' WITH MAX_QUERIES_PER_HOUR 90
+		// MYSQL LIMIT [QUERIES-PER-HOUR|UPDATES-PER-HOUR|CONNECTIONS-PER-HOUR|USER-CONNECTIONS]
+		//	TO $count FOR $user ON $hostname [DATABASE $database TABLE $tab]
+		char database[64] = "*";
+		char table[64] = "*";
+		char qry[2048] = { 0 };
+
+		if (t.numTokens < 9) {
+			ret = -EINVAL;
+			goto cleanup;
+		}
+
+		if (atoi(t.tokens[4]) < 1) {
+			DPRINTF("%s: Invalid number for limit ('%s')\n", __FUNCTION__, t.tokens[4]);
+			ret = -EINVAL;
+			goto cleanup;
+		}
+
+		if ((t.numTokens > 10) && (strcmp(t.tokens[9], "DATABASE") == 0))
+			strncpy(database, t.tokens[10], strlen(t.tokens[10]));
+
+		if ((t.numTokens > 12) && (strcmp(t.tokens[11], "TABLE") == 0))
+			strncpy(table, t.tokens[12], strlen(t.tokens[12]));
+
+		if (strcmp(t.tokens[2], "QUERIES-PER-HOUR") == 0) {
+			snprintf(qry, sizeof(qry), "GRANT USAGE ON %s.%s TO '%s'@'%s' WITH MAX_QUERIES_PER_HOUR %s",
+				database, table, t.tokens[6], t.tokens[8], t.tokens[4]);
+		}
+
+		if (strcmp(t.tokens[2], "UPDATES-PER-HOUR") == 0) {
+			snprintf(qry, sizeof(qry), "GRANT USAGE ON %s.%s TO '%s'@'%s' WITH MAX_UPDATES_PER_HOUR %s",
+				database, table, t.tokens[6], t.tokens[8], t.tokens[4]);
+		}
+
+		if (strcmp(t.tokens[2], "CONNECTIONS-PER-HOUR") == 0) {
+			snprintf(qry, sizeof(qry), "GRANT USAGE ON %s.%s TO '%s'@'%s' WITH MAX_CONNECTIONS_PER_HOUR %s",
+				database, table, t.tokens[6], t.tokens[8], t.tokens[4]);
+		}
+
+		if (strcmp(t.tokens[2], "USER-CONNECTIONS") == 0) {
+			snprintf(qry, sizeof(qry), "GRANT USAGE ON %s.%s TO '%s'@'%s' WITH MAX_USER_CONNECTIONS %s",
+				database, table, t.tokens[6], t.tokens[8], t.tokens[4]);
+		}
+
+		DPRINTF("%s: About to run query '%s'\n", __FUNCTION__, qry);
+
+		if (mysql_real_query(&sql, qry, strlen(qry)) != 0) {
+			DPRINTF("%s: Error occured on user to database association deletion: %s\n", __FUNCTION__,
+				mysql_error(&sql));
+			ret = -EIO;
+			goto cleanup;
+		}
+
+		DPRINTF("%s: Query '%s' done successfully\n", __FUNCTION__, qry);
 	}
 	else
 		ret = -ENOTSUP;
