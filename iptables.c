@@ -86,9 +86,10 @@ int firewall_srvmgr_chain_delete(void)
 		return -EACCES;
 
 	while (!feof(fp)) {
+		memset(s, 0, sizeof(s));
 		fgets(s, sizeof(s), fp);
 
-		if (strncmp(s, "-A SRVMGR", 9) != 0)
+		if ((strncmp(s, "-A SRVMGR", 9) != 0) && (strlen(s) > 0))
 			fputs(s, fp2);
 	}
 

@@ -71,5 +71,6 @@ char* config_read(const char *filename, char *key);
 
 char *base64_decode(char *in);
 char *process_read_handler(char *value);
+char *process_handlers(char *path);
 
 #endif

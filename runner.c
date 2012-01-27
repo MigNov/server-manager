@@ -15,8 +15,6 @@ void exitFunc(void)
 	int mbinpid;
 
 	mbinpid = get_process_pid_from_ps(MANAGER_BINARY);
-	DPRINTF("First manager binary PID: %d\n", mbinpid);
-
 	if ((mbinpid != getpid()) || (getuid() != 0))
 		return;
 

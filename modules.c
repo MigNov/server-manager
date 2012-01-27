@@ -25,7 +25,7 @@ int get_process_pid_from_ps(char *process)
 
 	//snprintf(cmd, sizeof(cmd), "ps aux | awk '/^%s /{ split($0, a, \" \"); print a[2] }' 2>&1", process);
 	snprintf(cmd, sizeof(cmd), "ps aux | grep %s | awk '{ split($0, a, \" \"); print a[2] }' 2>&1", process);
-	DPRINTF("%s: Command is '%s'\n", __FUNCTION__, cmd);
+	//DPRINTF("%s: Command is '%s'\n", __FUNCTION__, cmd);
 	fp = popen(cmd, "r");
 	if (fp == NULL)
 		return -EINVAL;
@@ -78,6 +78,39 @@ char *process_read_handler(char *value)
 	free(filename);
 
 	return strdup(data);
+}
+
+char *process_exec_handler(char *binary)
+{
+	FILE *fp = NULL;
+	char s[4096] = { 0 };
+
+	if (access(binary, X_OK) != 0)
+		return NULL;
+
+	fp = popen(binary, "r");
+	if (fp == NULL)
+		return NULL;
+
+	fgets(s, 4096, fp);
+	fclose(fp);
+
+	/* Strip \n from the end */
+	if (s[strlen(s) - 1] == '\n')
+		s[strlen(s) - 1] = 0;
+
+	return strdup(s);
+}
+
+char *process_handlers(char *path)
+{
+	if (path == NULL)
+		return NULL;
+
+	if (strncmp(path, "exec://", 7) == 0)
+		return process_exec_handler(path + 7);
+
+	return NULL;
 }
 
 int module_install(char *base_path, char *libname)
