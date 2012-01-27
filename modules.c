@@ -107,6 +107,8 @@ char *process_handlers(char *path)
 	if (path == NULL)
 		return NULL;
 
+	if (strncmp(path, "read://", 7) == 0)
+		return process_read_handler(path);
 	if (strncmp(path, "exec://", 7) == 0)
 		return process_exec_handler(path + 7);
 
