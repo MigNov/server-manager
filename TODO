@@ -10,6 +10,7 @@ Development plan
 - Configuration spaces:
   - SCMs (i.e. Git and SVN)
     - Implement installation for Git module
+      - Remote synchronization - 100%
     - Implement installation of web-modules -> websvn, gitweb
     - about 90% already done
   - DNS administration (BIND) - 100% done

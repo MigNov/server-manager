@@ -61,22 +61,41 @@ Example: MYSQL LIMIT QUERIES-PER-HOUR TO 100 FOR srvmgrtest ON localhost
 CRON COMMANDS
 -------------
 
-1) CREATE A CRON TABLE ENTRY
+1) Create a cron table entry
 
 Syntax: CRON ADD $username "Min Hour Day Month DOW /path/to/command"
 
-2) DELETE A CRON TABLE ENTRY
+Example: CRON ADD root "5 * * * * /root/send-report.sh"
+
+         This example will run /root/send-report.sh every 5th minute of the hour.
+
+2) Delete a cron table entry
 
 Syntax: CRON DELETE $username "Min Hour Day Month DOW /path/to/command"
 Syntax: CRON REMOVE $username "Min Hour Day Month DOW /path/to/command"
 
-3) TRUNCATE CRON TABLE
+Example: CRON DELETE root "5 * * * * /root/send-report.sh"
+
+         This example will remove the /root/send-report.sh entry as added by previous command (CRON ADD).
+         Since there could be multiple occurrences of the same command you need to specify the time definition
+         as well.
+
+3) Truncate (delete all) cron table
 
 Syntax: CRON TRUNCATE $username
 
-4) LIST TABLE
+Example: CRON TRUNCATE root
+
+         This command will remove all the entries from the CRON table of root user on the system.
+
+4) List table
 
 Syntax: CRON LIST $username $filename_to_store_to
+
+Example: CRON LIST root /tmp/cron-root.tmp
+
+         This command will dump the cron table for root user into /tmp/cron-root.tmp file in the CRON
+         notation. You need to parse it manually.
 
 GIT REPOSITORY COMMANDS (SCM-GIT):
 ----------------------------------
@@ -131,6 +150,20 @@ Syntax: DAEMON DISABLE
 
 Purpose: Disables the Git daemon.
 
+
+6) SYNC
+
+Syntax: SYNC $reponame
+
+Purpose: This command will synchronize data from $reponame repository (checkout) into the
+         remote location as defined in manager.conf file.
+
+7) SYNC-REPO
+
+Syntax: SYNC-REPO $reponame
+
+Purpose: Same as 6 except the synchronization will take and transfer the git repository rather
+         than checked-out copy.
 
 SVN REPOSITORY COMMANDS (SCM-SVN):
 ----------------------------------
